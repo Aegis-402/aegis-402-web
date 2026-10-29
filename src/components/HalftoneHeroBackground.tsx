@@ -65,6 +65,7 @@ export function HalftoneHeroBackground({
     let animationFrameId: number;
     let width = 0;
     let height = 0;
+    let computedCenterY = 235;
 
     const handleResize = () => {
       const rect = container.getBoundingClientRect();
@@ -78,6 +79,22 @@ export function HalftoneHeroBackground({
       canvas.style.height = `${height}px`;
 
       ctx.scale(dpr, dpr);
+
+      // Dynamically align vertical center of emblem behind the hero headline
+      const headlineEl = container.parentElement?.querySelector(".text-center") as HTMLElement | null;
+      if (headlineEl) {
+        const hRect = headlineEl.getBoundingClientRect();
+        const cRect = container.getBoundingClientRect();
+        computedCenterY = Math.max(180, (hRect.top - cRect.top) + hRect.height * 0.42);
+      } else {
+        computedCenterY = Math.min(235, height * 0.28);
+      }
+
+      // Synchronize vignette mask center exactly with the emblem center
+      const maskY = Math.round(computedCenterY);
+      const maskStyle = `radial-gradient(ellipse 92% 78% at 50% ${maskY}px, black 38%, transparent 88%)`;
+      container.style.maskImage = maskStyle;
+      container.style.webkitMaskImage = maskStyle;
     };
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -115,9 +132,9 @@ export function HalftoneHeroBackground({
         state.angle -= Math.PI * 2;
       }
 
-      // Center of the logo (positioned gracefully in upper hero behind text)
+      // Center of the logo (aligned with the hero headline)
       const centerX = width / 2;
-      const centerY = Math.min(320, height * 0.42);
+      const centerY = computedCenterY;
 
       // Subtle parallax response to mouse
       if (mouse.active) {
@@ -133,9 +150,9 @@ export function HalftoneHeroBackground({
       const logoX = centerX + state.offsetX;
       const logoY = centerY + state.offsetY;
 
-      // Scale diameter to fit viewport cleanly (responsive 340px to 520px)
-      const logoRadius = Math.min(width * 0.42, 260);
-      const dotBaseMaxRadius = logoRadius / 56;
+      // Scale diameter to fit viewport cleanly (50% larger: ~780px diameter on desktop)
+      const logoRadius = Math.min(width * 0.55, 390);
+      const dotBaseMaxRadius = logoRadius / 52;
 
       const cosA = Math.cos(state.angle);
       const sinA = Math.sin(state.angle);
@@ -148,7 +165,7 @@ export function HalftoneHeroBackground({
 
       // Update outward pulse wave
       if (state.pulseActive) {
-        state.pulseRadius += logoRadius * 0.025;
+        state.pulseRadius += logoRadius * 0.022;
         if (state.pulseRadius > logoRadius * 1.5) {
           state.pulseActive = false;
           state.pulseRadius = 0;
@@ -183,7 +200,7 @@ export function HalftoneHeroBackground({
 
         // Proximity calculation from cursor
         const distToMouse = mouse.active ? Math.hypot(screenX - mouse.x, screenY - mouse.y) : 999;
-        const mouseProximity = Math.max(0, 1 - distToMouse / 130);
+        const mouseProximity = Math.max(0, 1 - distToMouse / 165);
 
         // Section quadrant illumination calculation
         let quadGlow = 0;
@@ -201,8 +218,8 @@ export function HalftoneHeroBackground({
         if (state.pulseActive) {
           const dotDistFromCenter = Math.hypot(rx * logoRadius, ry * logoRadius);
           const diffPulse = Math.abs(dotDistFromCenter - state.pulseRadius);
-          if (diffPulse < 35) {
-            pulseGlow = (1 - diffPulse / 35) * 0.9;
+          if (diffPulse < 40) {
+            pulseGlow = (1 - diffPulse / 40) * 0.9;
           }
         }
 
@@ -227,17 +244,17 @@ export function HalftoneHeroBackground({
         let fillStyle: string;
 
         if (isDark) {
-          // Base resting opacity: 0.12 to 0.28
-          alpha = Math.min(1, 0.12 + dot.baseR * 0.16 + dot.illumination * 0.72);
+          // Atmospheric watermark resting opacity behind text
+          alpha = Math.min(1, 0.08 + dot.baseR * 0.12 + dot.illumination * 0.78);
           if (dot.illumination > 0.4) {
-            // Bright luminous white with subtle emerald accent tint when active
+            // Bright luminous white with subtle glow when active
             fillStyle = `rgba(255, 255, 255, ${alpha.toFixed(2)})`;
           } else {
             fillStyle = `rgba(228, 228, 231, ${alpha.toFixed(2)})`;
           }
         } else {
           // Light mode stark monochrome dots
-          alpha = Math.min(1, 0.08 + dot.baseR * 0.12 + dot.illumination * 0.75);
+          alpha = Math.min(1, 0.05 + dot.baseR * 0.09 + dot.illumination * 0.78);
           fillStyle = `rgba(9, 9, 11, ${alpha.toFixed(2)})`;
         }
 
@@ -275,8 +292,8 @@ export function HalftoneHeroBackground({
       className="absolute inset-0 pointer-events-none z-0 overflow-hidden"
       aria-hidden="true"
       style={{
-        maskImage: "radial-gradient(ellipse 70% 65% at 50% 38%, black 30%, transparent 80%)",
-        WebkitMaskImage: "radial-gradient(ellipse 70% 65% at 50% 38%, black 30%, transparent 80%)",
+        maskImage: "radial-gradient(ellipse 92% 78% at 50% 235px, black 38%, transparent 88%)",
+        WebkitMaskImage: "radial-gradient(ellipse 92% 78% at 50% 235px, black 38%, transparent 88%)",
       }}
     >
       <canvas ref={canvasRef} className="w-full h-full block" />
