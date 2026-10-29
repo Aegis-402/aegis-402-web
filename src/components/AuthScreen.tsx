@@ -112,30 +112,28 @@ export function AuthScreen({
   };
 
   return (
-    <div className="h-screen w-screen overflow-hidden bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 flex flex-col items-center justify-center p-4 font-sans transition-colors">
+    <div className="h-screen w-screen overflow-hidden bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 flex flex-col items-center justify-center p-4 font-sans transition-colors relative">
+      {/* Screen Edge Floating Controls */}
+      <button
+        type="button"
+        onClick={onBackToHome}
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xs text-xs font-mono text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer z-20 shadow-xs"
+      >
+        <ArrowLeft className="w-3.5 h-3.5" />
+        <span>Back</span>
+      </button>
+
+      <button
+        type="button"
+        onClick={onToggleTheme}
+        className="absolute top-4 right-4 sm:top-6 sm:right-6 w-8 h-8 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xs flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer z-20 shadow-xs"
+        aria-label="Toggle theme"
+      >
+        {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
+      </button>
+
       {/* Main Centered Auth Form */}
-      <div className="w-full max-w-[420px] rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e] p-5 sm:p-6 shadow-xl">
-        {/* Card Header Utility Row (Back + Theme Toggle) */}
-        <div className="flex items-center justify-between mb-3">
-          <button
-            type="button"
-            onClick={onBackToHome}
-            className="inline-flex items-center gap-1.5 text-xs font-mono text-zinc-500 hover:text-zinc-950 dark:hover:text-white transition-colors cursor-pointer"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={onToggleTheme}
-            className="w-7 h-7 rounded border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-            aria-label="Toggle theme"
-          >
-            {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-          </button>
-        </div>
-
+      <div className="w-full max-w-[420px] rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e] p-5 sm:p-6 shadow-xl relative z-10">
         {/* Logo & Header */}
         <div className="text-center mb-3.5">
           <div className="w-7 h-7 mx-auto mb-2 flex items-center justify-center">
