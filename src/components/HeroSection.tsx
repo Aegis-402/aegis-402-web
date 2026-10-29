@@ -70,11 +70,13 @@ export function HeroSection({
 
   return (
     <section className="relative pt-12 pb-20 md:pb-28 overflow-hidden bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 transition-colors">
-      {/* Dynamic Interactive Halftone Aegis Emblem Background (adjust yOffset to drop or raise along Y-axis) */}
+      {/* Dynamic Interactive Halftone Aegis Emblem Background */}
       <HalftoneHeroBackground
         theme={theme}
         hoveredSection={hoveredSection}
-        yOffset={0}
+        yOffset={250}
+        xOffset={0}
+        scale={1.0}
       />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
@@ -111,7 +113,10 @@ export function HeroSection({
               className="inline-block font-serif italic font-semibold underline decoration-zinc-400 dark:decoration-zinc-500 decoration-[1.5px] underline-offset-[7px]"
             >
               {typewriterWords.map((item, wordIdx) => (
-                <span key={item.word} className="whitespace-nowrap underline decoration-zinc-400 dark:decoration-zinc-500 decoration-[1.5px] underline-offset-[7px]">
+                <span
+                  key={item.word}
+                  className="whitespace-nowrap underline decoration-zinc-400 dark:decoration-zinc-500 decoration-[1.5px] underline-offset-[7px]"
+                >
                   {item.chars.map((char, charIdx) => (
                     <motion.span key={charIdx} variants={charVariants}>
                       {char}

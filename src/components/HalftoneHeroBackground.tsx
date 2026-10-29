@@ -4,7 +4,9 @@ import { AEGIS_HALFTONE_DOTS } from "./aegisHalftoneData";
 interface HalftoneHeroBackgroundProps {
   theme: "light" | "dark";
   hoveredSection?: "headline" | "post-bounty" | "register-agent" | "canvas" | null;
-  yOffset?: number; // Adjust along the Y-axis: positive drops downwards, negative moves upwards
+  yOffset?: number; // Shift vertically (positive drops down, negative moves up)
+  xOffset?: number; // Shift horizontally (positive moves right, negative moves left)
+  scale?: number; // Size scale factor (default 1.0; e.g. 1.25 for 25% bigger, 1.5 for 50% bigger)
 }
 
 interface DotState {
@@ -18,6 +20,8 @@ export function HalftoneHeroBackground({
   theme,
   hoveredSection = null,
   yOffset = 0,
+  xOffset = 0,
+  scale = 1.0,
 }: HalftoneHeroBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -92,9 +96,12 @@ export function HalftoneHeroBackground({
         computedCenterY = Math.min(235, height * 0.28) + yOffset;
       }
 
-      // Synchronize vignette mask center exactly with the emblem center
+      // Synchronize vignette mask center and scale exactly with the emblem
+      const maskX = Math.round(width / 2 + xOffset);
       const maskY = Math.round(computedCenterY);
-      const maskStyle = `radial-gradient(ellipse 92% 78% at 50% ${maskY}px, black 38%, transparent 88%)`;
+      const maskRadiusX = Math.min(100, Math.round(92 * Math.sqrt(scale)));
+      const maskRadiusY = Math.min(100, Math.round(78 * Math.sqrt(scale)));
+      const maskStyle = `radial-gradient(ellipse ${maskRadiusX}% ${maskRadiusY}% at ${maskX}px ${maskY}px, black 38%, transparent 88%)`;
       container.style.maskImage = maskStyle;
       container.style.webkitMaskImage = maskStyle;
     };
@@ -134,8 +141,8 @@ export function HalftoneHeroBackground({
         state.angle -= Math.PI * 2;
       }
 
-      // Center of the logo (aligned with the hero headline)
-      const centerX = width / 2;
+      // Center of the logo (aligned with the hero headline + optional offsets)
+      const centerX = width / 2 + xOffset;
       const centerY = computedCenterY;
 
       // Subtle parallax response to mouse
@@ -152,8 +159,8 @@ export function HalftoneHeroBackground({
       const logoX = centerX + state.offsetX;
       const logoY = centerY + state.offsetY;
 
-      // Scale diameter to fit viewport cleanly (50% larger: ~780px diameter on desktop)
-      const logoRadius = Math.min(width * 0.55, 390);
+      // Scale diameter to fit viewport cleanly (with scale multiplier)
+      const logoRadius = Math.min(width * 0.55, 390) * Math.max(0.2, scale);
       const dotBaseMaxRadius = logoRadius / 52;
 
       const cosA = Math.cos(state.angle);
@@ -286,7 +293,7 @@ export function HalftoneHeroBackground({
       parentSection.removeEventListener("mousemove", handleMouseMove as EventListener);
       parentSection.removeEventListener("mouseleave", handleMouseLeave as EventListener);
     };
-  }, [theme, hoveredSection, yOffset]);
+  }, [theme, hoveredSection, yOffset, xOffset, scale]);
 
   return (
     <div
