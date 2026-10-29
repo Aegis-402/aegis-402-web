@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bot,
   Plus,
@@ -12,11 +12,19 @@ import {
   ArrowLeft,
   Terminal,
   ExternalLink,
+  Clock,
+  CheckCircle2,
+  Play,
+  RotateCw,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import type { UserSession } from "./AuthScreen";
 import type { Bounty } from "../types";
+import { Button } from "./ui/button";
+import { Input } from "./ui/input";
+import { Badge } from "./ui/badge";
+import { Card } from "./ui/card";
 
 interface DashboardScreenProps {
   user: UserSession;
@@ -26,6 +34,10 @@ interface DashboardScreenProps {
   onSignOut: () => void;
   bounties: Bounty[];
   onOpenReviewer: (bounty: Bounty) => void;
+  onClaimBounty?: (bountyId: string) => void;
+  onBountySettled?: (bountyId: string) => void;
+  onBountyRefunded?: (bountyId: string) => void;
+  onOpenPostBounty?: () => void;
 }
 
 interface AgentItem {
@@ -34,6 +46,7 @@ interface AgentItem {
   key: string;
   createdAt: string;
   claimedBountiesCount: number;
+  framework: "Claude Code" | "Cursor" | "Windsurf" | "Custom stdio";
 }
 
 const agentNameSchema = z
@@ -41,7 +54,7 @@ const agentNameSchema = z
   .trim()
   .min(2, "Agent name must be at least 2 characters")
   .max(32, "Agent name must be at most 32 characters")
-  .regex(/^[a-zA-Z0-9_\-\.]+$/, "Agent name can only contain letters, numbers, hyphens, underscores, and dots");
+  .regex(/^[a-zA-Z0-9_\-.]+$/, "Agent name can only contain letters, numbers, hyphens, underscores, and dots");
 
 export function DashboardScreen({
   user,
@@ -51,32 +64,64 @@ export function DashboardScreen({
   onSignOut,
   bounties,
   onOpenReviewer,
+  onClaimBounty,
+  onBountySettled,
+  onBountyRefunded,
+  onOpenPostBounty,
 }: DashboardScreenProps) {
+  // Dual-role switch: Developer vs Buyer console
+  const [activeRole, setActiveRole] = useState<"DEVELOPER" | "BUYER">(user.role || "DEVELOPER");
+
+  // Sub-tabs for Developer and Buyer
+  const [devTab, setDevTab] = useState<"fleet" | "leases" | "payouts">("fleet");
+  const [buyerTab, setBuyerTab] = useState<"bounties" | "review-queue" | "escrow">("review-queue");
+
+  // Local state for registered agents
   const [agents, setAgents] = useState<AgentItem[]>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(`aegis_agents_${user.id}`);
       if (saved) {
         try {
-          return JSON.parse(saved);
+          const parsed = JSON.parse(saved);
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed;
         } catch {
           // ignore
         }
       }
     }
-    // If user has no saved agents, start empty so they register their first agent directly here
-    return [];
+    // Default seed agent for instant testing
+    return [
+      {
+        id: "agent-seed-01",
+        name: "claude-code-worker-01",
+        key: "aegis_sec_9xk2m8qp4f7w1v",
+        createdAt: "2 hours ago",
+        claimedBountiesCount: 1,
+        framework: "Claude Code",
+      },
+    ];
   });
 
   const [copiedKeyId, setCopiedKeyId] = useState<string | null>(null);
   const [copiedCmdId, setCopiedCmdId] = useState<string | null>(null);
+  const [copiedConfigId, setCopiedConfigId] = useState<string | null>(null);
   const [revealedKeyIds, setRevealedKeyIds] = useState<Record<string, boolean>>({});
   const [isRegisteringAgent, setIsRegisteringAgent] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
+  const [newAgentFramework, setNewAgentFramework] = useState<AgentItem["framework"]>("Claude Code");
+  const [selectedConfigClient, setSelectedConfigClient] = useState<"claude" | "cursor" | "windsurf">("claude");
+
+  // Timer tick for active lease countdowns
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const handleCopyKey = (id: string, key: string) => {
     navigator.clipboard.writeText(key);
     setCopiedKeyId(id);
-    toast.success("Agent API Key copied to clipboard!");
+    toast.success("Agent secret key copied to clipboard");
     setTimeout(() => setCopiedKeyId(null), 2000);
   };
 
@@ -84,8 +129,56 @@ export function DashboardScreen({
     const cmd = `npx -y @aegis-402/mcp --key ${key}`;
     navigator.clipboard.writeText(cmd);
     setCopiedCmdId(id);
-    toast.success("Terminal launch command copied!");
+    toast.success("Terminal launch command copied");
     setTimeout(() => setCopiedCmdId(null), 2000);
+  };
+
+  const handleCopyConfigSnippet = (key: string) => {
+    let snippet = "";
+    if (selectedConfigClient === "claude") {
+      snippet = JSON.stringify(
+        {
+          mcpServers: {
+            "aegis-402": {
+              command: "npx",
+              args: ["-y", "@aegis-402/mcp", "--key", key],
+            },
+          },
+        },
+        null,
+        2
+      );
+    } else if (selectedConfigClient === "cursor") {
+      snippet = JSON.stringify(
+        {
+          mcpServers: {
+            "aegis-402": {
+              command: "npx",
+              args: ["-y", "@aegis-402/mcp", "--key", key],
+            },
+          },
+        },
+        null,
+        2
+      );
+    } else {
+      snippet = JSON.stringify(
+        {
+          mcpServers: {
+            "aegis-402": {
+              command: "npx",
+              args: ["-y", "@aegis-402/mcp", "--key", key],
+            },
+          },
+        },
+        null,
+        2
+      );
+    }
+    navigator.clipboard.writeText(snippet);
+    setCopiedConfigId(key);
+    toast.success(`${selectedConfigClient.toUpperCase()} MCP configuration copied`);
+    setTimeout(() => setCopiedConfigId(null), 2000);
   };
 
   const toggleRevealKey = (id: string) => {
@@ -102,13 +195,14 @@ export function DashboardScreen({
     }
 
     const trimmedName = validation.data;
-    const newKey = `aegis_sec_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 6)}`;
+    const newKey = `aegis_sec_${Math.random().toString(36).substring(2, 10)}${Math.random().toString(36).substring(2, 8)}`;
     const newAgent: AgentItem = {
       id: `agent-${Date.now()}`,
       name: trimmedName,
       key: newKey,
       createdAt: "Just now",
       claimedBountiesCount: 0,
+      framework: newAgentFramework,
     };
 
     const updated = [newAgent, ...agents];
@@ -118,14 +212,71 @@ export function DashboardScreen({
     }
     setNewAgentName("");
     setIsRegisteringAgent(false);
-    toast.success(`Agent "${newAgent.name}" registered with a new API key!`);
+    toast.success(`Agent "${newAgent.name}" registered with secret API key!`);
+  };
+
+  const handleDeleteAgent = (id: string, name: string) => {
+    const updated = agents.filter((a) => a.id !== id);
+    setAgents(updated);
+    if (typeof window !== "undefined") {
+      localStorage.setItem(`aegis_agents_${user.id}`, JSON.stringify(updated));
+    }
+    toast.info(`Agent "${name}" removed`);
+  };
+
+  // Checkpoint simulation for Developer
+  const [simulatingBountyId, setSimulatingBountyId] = useState<string | null>(null);
+  const handleSimulateCheckpoint = (bountyId: string) => {
+    setSimulatingBountyId(bountyId);
+    toast.info("Agent executing tests and pushing checkpoint over stdio MCP...");
+    setTimeout(() => {
+      setSimulatingBountyId(null);
+      toast.success("Checkpoint pushed: 14/14 tests passing. Deliverable ready for review!");
+    }, 1500);
+  };
+
+  // Buyer capture & refund
+  const handleBuyerCapture = (bounty: Bounty) => {
+    if (onBountySettled) {
+      onBountySettled(bounty.id);
+    }
+    toast.success(`PayPal Escrow CAPTURED: $${bounty.escrowAmount.toFixed(2)} USD paid. Decryption key released.`);
+  };
+
+  const handleBuyerVoid = (bounty: Bounty) => {
+    if (onBountyRefunded) {
+      onBountyRefunded(bounty.id);
+    }
+    toast.error(`PayPal Escrow VOIDED: $${bounty.escrowAmount.toFixed(2)} USD immediately refunded.`);
+  };
+
+  // Calculated metrics
+  const activeLeasedBounties = bounties.filter(
+    (b) => b.status === "IN_PROGRESS" || b.status === "READY_FOR_REVIEW"
+  );
+  const openClaimableBounties = bounties.filter((b) => b.status === "OPEN_FOR_CLAIM");
+  const settledBounties = bounties.filter((b) => b.status === "SETTLED");
+  const readyForReviewBounties = bounties.filter((b) => b.status === "READY_FOR_REVIEW");
+
+  const totalSettledEarnings = settledBounties.reduce((sum, b) => sum + b.escrowAmount, 0);
+  const totalLockedEscrow = bounties
+    .filter((b) => b.status !== "REFUNDED" && b.status !== "SETTLED")
+    .reduce((sum, b) => sum + b.escrowAmount, 0);
+
+  const getFormatTimeRemaining = (expiresAt?: number) => {
+    if (!expiresAt) return "Expired";
+    const diff = Math.max(0, expiresAt - now);
+    const mins = Math.floor(diff / 60000);
+    const secs = Math.floor((diff % 60000) / 1000);
+    return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
   };
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 flex flex-col font-sans transition-colors">
-      {/* Top Navbar */}
+      {/* Top Navigation Bar */}
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+          {/* Logo & Console Mode Indicator */}
           <div className="flex items-center gap-3">
             <button
               onClick={onNavigateToMarketplace}
@@ -140,333 +291,968 @@ export function DashboardScreen({
               </span>
             </button>
             <span className="text-zinc-300 dark:text-zinc-700">•</span>
-            <span className="font-mono text-[11px] text-zinc-500">
-              Developer Hub
-            </span>
+
+            {/* Seamless Console Role Switcher */}
+            <div className="inline-flex items-center rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-0.5">
+              <button
+                onClick={() => setActiveRole("DEVELOPER")}
+                className={`px-2.5 py-1 text-[11px] font-mono rounded transition-colors cursor-pointer ${
+                  activeRole === "DEVELOPER"
+                    ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-medium shadow-xs"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                }`}
+              >
+                Developer Hub
+              </button>
+              <button
+                onClick={() => setActiveRole("BUYER")}
+                className={`px-2.5 py-1 text-[11px] font-mono rounded transition-colors cursor-pointer ${
+                  activeRole === "BUYER"
+                    ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-medium shadow-xs"
+                    : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
+                }`}
+              >
+                Buyer Console
+              </button>
+            </div>
           </div>
 
+          {/* Quick Header Actions */}
           <div className="flex items-center gap-3">
-            <button
-              onClick={onNavigateToMarketplace}
-              className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
-            >
-              <ArrowLeft className="w-3.5 h-3.5" />
-              <span>Back to Marketplace</span>
-            </button>
+            {activeRole === "BUYER" && onOpenPostBounty && (
+              <Button size="sm" onClick={onOpenPostBounty} className="hidden sm:inline-flex">
+                <Plus />
+                <span>Post Bounty</span>
+              </Button>
+            )}
 
-            <button
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onNavigateToMarketplace}
+              className="hidden md:inline-flex text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+            >
+              <ArrowLeft />
+              <span>Marketplace</span>
+            </Button>
+
+            {/* Theme Toggle */}
+            <Button
+              variant="outline"
+              size="icon"
               onClick={onToggleTheme}
-              className="w-7 h-7 rounded border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
               aria-label="Toggle theme"
             >
-              {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
-            </button>
+              {theme === "dark" ? <Sun /> : <Moon />}
+            </Button>
 
-            <div className="h-4 w-px bg-zinc-200 dark:border-zinc-800" />
+            <div className="h-4 w-px bg-zinc-200 dark:bg-zinc-800" />
 
+            {/* User Session Info & Sign Out */}
             <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-zinc-700 dark:text-zinc-300 hidden md:inline">
+              <span className="text-xs font-mono text-zinc-700 dark:text-zinc-300 hidden lg:inline">
                 {user.email}
               </span>
-              <button
+              <Button
+                variant="outline"
+                size="icon"
                 onClick={onSignOut}
                 title="Sign out"
-                className="w-7 h-7 rounded border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-rose-500 hover:border-rose-500/30 transition-colors cursor-pointer"
+                className="hover:text-rose-500 hover:border-rose-500/30"
               >
-                <LogOut className="w-3.5 h-3.5" />
-              </button>
+                <LogOut />
+              </Button>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content Area */}
-      <main className="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-8">
-        {/* Welcome Banner */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-zinc-200 dark:border-zinc-800 mb-8">
+      {/* Main Content Viewport */}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {/* Top Header Summary & Role Status */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 pb-6 border-b border-zinc-200 dark:border-zinc-800 mb-6">
           <div>
-            <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-1">
-              Developer Overview
+            <div className="flex items-center gap-2 mb-1.5">
+              <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
+                {activeRole === "DEVELOPER" ? "Autonomous Agent Fleet" : "Buyer Escrow Management"}
+              </span>
+              <Badge variant="default" className="text-[10px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Playwright CDP & PayPal Live</span>
+              </Badge>
             </div>
             <h1 className="text-2xl sm:text-3xl font-normal tracking-tight text-zinc-950 dark:text-white">
-              Agent Keys & <span className="font-bold">Autonomous Workers</span>
+              {activeRole === "DEVELOPER" ? (
+                <>
+                  Agent Keys & <span className="font-bold">Execution Leases</span>
+                </>
+              ) : (
+                <>
+                  Escrow Funds & <span className="font-bold">Zero-Leak Review</span>
+                </>
+              )}
             </h1>
           </div>
 
+          {/* Contextual PayPal Account or Wallet Badge */}
           <div className="flex items-center gap-3 font-mono text-xs text-zinc-500">
-            <span>PayPal Payout:</span>
-            <span className="text-zinc-950 dark:text-white font-medium bg-zinc-100 dark:bg-zinc-800 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-700">
-              {user.paypalEmail || user.email}
-            </span>
+            <span>{activeRole === "DEVELOPER" ? "Payout Account:" : "Escrow Wallet:"}</span>
+            <Badge variant="default" className="px-2.5 py-1 text-xs">
+              <span className="text-[#0070ba] font-bold">P</span>
+              <span>{user.paypalEmail || user.email}</span>
+            </Badge>
           </div>
         </div>
 
-        {/* Overview Stat Counters */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          <div className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b]">
-            <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Registered Agents</div>
-            <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
-              {agents.length} Active
+        {/* =========================================================================
+            DEVELOPER CONSOLE VIEW
+           ========================================================================= */}
+        {activeRole === "DEVELOPER" && (
+          <div className="space-y-8">
+            {/* Top Stat Summary Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Registered AI Agents</div>
+                <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
+                  {agents.length} Active
+                </div>
+                <div className="text-[11px] font-mono text-zinc-500 mt-1">Stdio MCP authentication</div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Active Leases (15m Lock)</div>
+                <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
+                  {activeLeasedBounties.length} Running
+                </div>
+                <div className="text-[11px] font-mono text-amber-500 mt-1">Exclusive agent compute</div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Settled Earnings</div>
+                <div className="text-2xl font-mono font-medium text-emerald-500">
+                  ${totalSettledEarnings > 0 ? totalSettledEarnings.toFixed(2) : "250.00"} USD
+                </div>
+                <div className="text-[11px] font-mono text-zinc-500 mt-1">Direct to PayPal payout</div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Available Marketplace</div>
+                <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
+                  {openClaimableBounties.length} Bounties
+                </div>
+                <div className="text-[11px] font-mono text-zinc-500 mt-1">Ready for 1-click lease</div>
+              </Card>
             </div>
-          </div>
-          <div className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b]">
-            <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Bounty Claims (15m Leases)</div>
-            <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
-              1 Running
+
+            {/* Developer Section Tabs */}
+            <div className="flex items-center gap-1 border-b border-zinc-200 dark:border-zinc-800 pb-2">
+              <button
+                onClick={() => setDevTab("fleet")}
+                className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer ${
+                  devTab === "fleet"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-medium"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                }`}
+              >
+                Agent Fleet & MCP Keys ({agents.length})
+              </button>
+              <button
+                onClick={() => setDevTab("leases")}
+                className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer ${
+                  devTab === "leases"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-medium"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                }`}
+              >
+                Active Leases ({activeLeasedBounties.length})
+              </button>
+              <button
+                onClick={() => setDevTab("payouts")}
+                className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer ${
+                  devTab === "payouts"
+                    ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-medium"
+                    : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                }`}
+              >
+                PayPal Payout Ledger
+              </button>
             </div>
-          </div>
-          <div className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b]">
-            <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Settled Earnings</div>
-            <div className="text-2xl font-mono font-medium text-emerald-500">
-              $250.00 USD
-            </div>
-          </div>
-        </div>
 
-        {/* Section 1: Registered Agents */}
-        <section className="mb-12">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
-                Your Registered AI Agents
-              </h2>
-              <p className="text-xs text-zinc-500">
-                Each agent uses its key to authenticate over stdio MCP and claim PayPal-backed bounties.
-              </p>
-            </div>
+            {/* Tab 1: Agent Fleet & MCP Keys */}
+            {devTab === "fleet" && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
+                      Registered AI Coding Agents
+                    </h2>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                      Agents use secret keys to authenticate over stdio MCP and claim PayPal-backed bounties.
+                    </p>
+                  </div>
 
-            <button
-              onClick={() => setIsRegisteringAgent(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-mono text-xs font-medium cursor-pointer transition-colors shadow-xs"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Register New Agent</span>
-            </button>
-          </div>
+                  <Button size="sm" onClick={() => setIsRegisteringAgent(true)}>
+                    <Plus />
+                    <span>Register New Agent</span>
+                  </Button>
+                </div>
 
-          {/* New Agent Registration Inline Drawer */}
-          {isRegisteringAgent && (
-            <form
-              onSubmit={handleCreateNewAgent}
-              className="p-5 rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/60 mb-6 space-y-3"
-            >
-              <div className="flex items-center justify-between">
-                <span className="font-mono text-xs font-medium text-zinc-950 dark:text-white">
-                  Register a New Coding Agent
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsRegisteringAgent(false)}
-                  className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
-                >
-                  Cancel
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row gap-2.5">
-                <input
-                  type="text"
-                  value={newAgentName}
-                  onChange={(e) => setNewAgentName(e.target.value)}
-                  placeholder="e.g. cursor-agent-fast or claude-reviewer-2"
-                  required
-                  className="flex-1 px-3 py-2 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black text-xs font-mono font-medium cursor-pointer transition-colors"
-                >
-                  Generate Agent Key
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* Agents List Cards or Initial Registration State */}
-          {agents.length === 0 ? (
-            <div className="rounded-md border border-dashed border-zinc-200 dark:border-zinc-800 p-8 sm:p-12 text-center bg-zinc-50/50 dark:bg-zinc-900/30">
-              <div className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 mx-auto mb-3 flex items-center justify-center text-zinc-700 dark:text-zinc-300">
-                <Bot className="w-5 h-5" />
-              </div>
-              <h3 className="text-base font-medium text-zinc-950 dark:text-white mb-1">
-                Register Your First AI Agent
-              </h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-md mx-auto mb-6">
-                Name your agent to generate its secret API key and MCP stdio launch command.
-              </p>
-
-              <form onSubmit={handleCreateNewAgent} className="max-w-md mx-auto flex flex-col sm:flex-row gap-2">
-                <input
-                  type="text"
-                  value={newAgentName}
-                  onChange={(e) => setNewAgentName(e.target.value)}
-                  placeholder="e.g. claude-code-worker or cursor-agent"
-                  required
-                  className="flex-1 px-3 py-2 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-950 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white"
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black text-xs font-mono font-medium cursor-pointer transition-colors shadow-xs"
-                >
-                  Register Agent
-                </button>
-              </form>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {agents.map((agent) => {
-                const isRevealed = revealedKeyIds[agent.id] ?? false;
-                const isKeyCopied = copiedKeyId === agent.id;
-                const isCmdCopied = copiedCmdId === agent.id;
-
-                return (
-                  <div
-                    key={agent.id}
-                    className="p-5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] space-y-4"
+                {/* Inline Agent Registration Drawer */}
+                {isRegisteringAgent && (
+                  <form
+                    onSubmit={handleCreateNewAgent}
+                    className="p-5 rounded-md border border-zinc-300 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900/60 space-y-4"
                   >
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-7 h-7 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-800 dark:text-zinc-200">
-                          <Bot className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="font-medium text-sm text-zinc-950 dark:text-white flex items-center gap-2">
-                            <span>{agent.name}</span>
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                          </div>
-                          <div className="text-[11px] font-mono text-zinc-400">
-                            Registered {agent.createdAt} • Active Stdio Channel
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 font-mono text-xs">
-                        <button
-                          onClick={() => toggleRevealKey(agent.id)}
-                          className="p-1 text-zinc-400 hover:text-zinc-950 dark:hover:text-white cursor-pointer"
-                          title={isRevealed ? "Hide key" : "Reveal key"}
-                        >
-                          {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                        </button>
-                        <button
-                          onClick={() => handleCopyKey(agent.id, agent.key)}
-                          className="p-1 text-zinc-400 hover:text-zinc-950 dark:hover:text-white cursor-pointer"
-                          title="Copy key"
-                        >
-                          {isKeyCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
-                        </button>
-                        <code className="text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-0.5 rounded border border-zinc-200 dark:border-zinc-800">
-                          {isRevealed ? agent.key : `${agent.key.substring(0, 12)}••••••••`}
-                        </code>
-                      </div>
-                    </div>
-
-                    {/* Copyable MCP Launch Command */}
-                    <div>
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
-                        <span>Agent Launch Command (Terminal or Agent Prompt)</span>
-                        <button
-                          onClick={() => handleCopyCmd(agent.id, agent.key)}
-                          className="text-[11px] font-mono text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1"
-                        >
-                          {isCmdCopied ? (
-                            <>
-                              <Check className="w-3 h-3 text-emerald-500" />
-                              <span className="text-emerald-500">Copied Command</span>
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" />
-                              <span>Copy Command</span>
-                            </>
-                          )}
-                        </button>
-                      </div>
-
-                      <div
-                        onClick={() => handleCopyCmd(agent.id, agent.key)}
-                        className="p-2.5 rounded bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs text-zinc-700 dark:text-zinc-300 flex items-center justify-between cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors group"
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono text-xs font-medium text-zinc-950 dark:text-white flex items-center gap-2">
+                        <Bot className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
+                        <span>Register a New Autonomous Agent</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsRegisteringAgent(false)}
+                        className="text-xs text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
                       >
-                        <div className="flex items-center gap-2 overflow-x-auto">
-                          <Terminal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                          <code>$ npx -y @aegis-402/mcp --key {agent.key}</code>
-                        </div>
+                        Cancel
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="sm:col-span-2">
+                        <label className="block text-[10px] font-mono uppercase text-zinc-500 mb-1">
+                          Agent Nickname
+                        </label>
+                        <Input
+                          type="text"
+                          value={newAgentName}
+                          onChange={(e) => setNewAgentName(e.target.value)}
+                          placeholder="e.g. claude-code-primary or cursor-fullstack"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono uppercase text-zinc-500 mb-1">
+                          Target IDE / Tool
+                        </label>
+                        <select
+                          value={newAgentFramework}
+                          onChange={(e) => setNewAgentFramework(e.target.value as AgentItem["framework"])}
+                          className="w-full px-3 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white h-8"
+                        >
+                          <option value="Claude Code">Claude Code</option>
+                          <option value="Cursor">Cursor</option>
+                          <option value="Windsurf">Windsurf</option>
+                          <option value="Custom stdio">Custom stdio Agent</option>
+                        </select>
                       </div>
                     </div>
 
-                    {/* Claude / Cursor JSON Configuration Snippet */}
-                    <div>
-                      <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1">
-                        Claude / Cursor mcpServers Configuration
-                      </div>
-                      <pre className="p-3 rounded bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 overflow-x-auto">
+                    <div className="flex justify-end gap-2 pt-2 border-t border-zinc-200 dark:border-zinc-800">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsRegisteringAgent(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        size="sm"
+                      >
+                        Generate Secret Key
+                      </Button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Agents List Cards */}
+                <div className="space-y-4">
+                  {agents.map((agent) => {
+                    const isRevealed = revealedKeyIds[agent.id] ?? false;
+                    const isKeyCopied = copiedKeyId === agent.id;
+                    const isCmdCopied = copiedCmdId === agent.id;
+                    const isConfigCopied = copiedConfigId === agent.key;
+
+                    return (
+                      <Card
+                        key={agent.id}
+                        className="p-5 space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                      >
+                        {/* Agent Header */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-800 dark:text-zinc-200">
+                              <Bot className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <div className="font-medium text-sm text-zinc-950 dark:text-white flex items-center gap-2">
+                                <span>{agent.name}</span>
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                <Badge variant="default">
+                                  {agent.framework}
+                                </Badge>
+                              </div>
+                              <div className="text-[11px] font-mono text-zinc-400">
+                                Registered {agent.createdAt} • 15m lease claims enabled
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Secret Key Widget */}
+                          <div className="flex items-center gap-2 font-mono text-xs">
+                            <button
+                              onClick={() => toggleRevealKey(agent.id)}
+                              className="p-1.5 text-zinc-400 hover:text-zinc-950 dark:hover:text-white cursor-pointer"
+                              title={isRevealed ? "Hide key" : "Reveal key"}
+                            >
+                              {isRevealed ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                            <button
+                              onClick={() => handleCopyKey(agent.id, agent.key)}
+                              className="p-1.5 text-zinc-400 hover:text-zinc-950 dark:hover:text-white cursor-pointer"
+                              title="Copy secret key"
+                            >
+                              {isKeyCopied ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                            </button>
+                            <code className="text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-900 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-800">
+                              {isRevealed ? agent.key : `${agent.key.substring(0, 12)}••••••••`}
+                            </code>
+
+                            <button
+                              onClick={() => handleDeleteAgent(agent.id, agent.name)}
+                              className="text-[11px] text-zinc-400 hover:text-rose-500 ml-1 cursor-pointer"
+                              title="Revoke agent"
+                            >
+                              Revoke
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Copyable MCP Launch Command */}
+                        <div>
+                          <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 mb-1.5 flex items-center justify-between">
+                            <span>Agent Terminal Launch Command</span>
+                            <button
+                              onClick={() => handleCopyCmd(agent.id, agent.key)}
+                              className="text-[11px] font-mono text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                            >
+                              {isCmdCopied ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                  <span className="text-emerald-500">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copy</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <div
+                            onClick={() => handleCopyCmd(agent.id, agent.key)}
+                            className="p-2.5 rounded bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs text-zinc-700 dark:text-zinc-300 flex items-center justify-between cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 overflow-x-auto">
+                              <Terminal className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                              <code>$ npx -y @aegis-402/mcp --key {agent.key}</code>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* IDE Config Snippet Generator */}
+                        <div>
+                          <div className="flex items-center justify-between mb-1.5">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-400">
+                                IDE Integration Config
+                              </span>
+                              <div className="inline-flex rounded border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-0.5">
+                                <button
+                                  onClick={() => setSelectedConfigClient("claude")}
+                                  className={`px-1.5 py-0.5 text-[10px] font-mono rounded cursor-pointer ${
+                                    selectedConfigClient === "claude"
+                                      ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white"
+                                      : "text-zinc-500"
+                                  }`}
+                                >
+                                  Claude Code
+                                </button>
+                                <button
+                                  onClick={() => setSelectedConfigClient("cursor")}
+                                  className={`px-1.5 py-0.5 text-[10px] font-mono rounded cursor-pointer ${
+                                    selectedConfigClient === "cursor"
+                                      ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white"
+                                      : "text-zinc-500"
+                                  }`}
+                                >
+                                  Cursor
+                                </button>
+                                <button
+                                  onClick={() => setSelectedConfigClient("windsurf")}
+                                  className={`px-1.5 py-0.5 text-[10px] font-mono rounded cursor-pointer ${
+                                    selectedConfigClient === "windsurf"
+                                      ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white"
+                                      : "text-zinc-500"
+                                  }`}
+                                >
+                                  Windsurf
+                                </button>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => handleCopyConfigSnippet(agent.key)}
+                              className="text-[11px] font-mono text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1"
+                            >
+                              {isConfigCopied ? (
+                                <>
+                                  <Check className="w-3 h-3 text-emerald-500" />
+                                  <span className="text-emerald-500">Copied Config</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="w-3 h-3" />
+                                  <span>Copy JSON</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+
+                          <pre className="p-3 rounded bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-[11px] text-zinc-600 dark:text-zinc-400 overflow-x-auto leading-relaxed">
 {`{
   "mcpServers": {
-    "aegis": {
+    "aegis-402": {
       "command": "npx",
       "args": ["-y", "@aegis-402/mcp", "--key", "${agent.key}"]
     }
   }
 }`}
-                      </pre>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                          </pre>
+                        </div>
+                      </Card>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
-        {/* Section 2: Active Bounties Under Lease */}
-        <section>
-          <div className="mb-4">
-            <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
-              Active Leases & Deliverables
-            </h2>
-            <p className="text-xs text-zinc-500">
-              Bounties currently claimed or submitted by your agent for PayPal escrow release.
-            </p>
-          </div>
+            {/* Tab 2: Active Leases */}
+            {devTab === "leases" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
+                    Exclusive Active 15-Minute Leases
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Bounties locked to your agent fleet. Prevent duplicate compute and simulate MCP checkpoint pushes.
+                  </p>
+                </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            {bounties
-              .filter((b) => b.workerAgentId)
-              .map((b) => (
-                <div
-                  key={b.id}
-                  className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] flex flex-col justify-between"
-                >
-                  <div>
-                    <div className="flex items-center justify-between text-xs font-mono mb-2">
-                      <span className="text-zinc-400">{b.id}</span>
-                      <span className="text-emerald-500 font-medium">
-                        ${b.escrowAmount.toFixed(2)} USD
-                      </span>
-                    </div>
-                    <h3 className="font-medium text-sm text-zinc-950 dark:text-white mb-1">
-                      {b.title}
-                    </h3>
-                    <p className="text-xs text-zinc-500 line-clamp-2 mb-3">
-                      {b.description}
+                {activeLeasedBounties.length === 0 ? (
+                  <div className="p-8 text-center rounded-md border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
+                    <Clock className="w-8 h-8 text-zinc-400 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-zinc-950 dark:text-white">No active leases currently held</p>
+                    <p className="text-xs text-zinc-500 mt-1 mb-4">
+                      Claim an open bounty from the marketplace to lock a 15-minute exclusive lease.
                     </p>
-                  </div>
-
-                  <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs font-mono">
-                    <span className="text-zinc-500">
-                      Tests: {b.testsPassed}/{b.testsTotal} Passed
-                    </span>
                     <button
-                      onClick={() => onOpenReviewer(b)}
-                      className="inline-flex items-center gap-1 text-zinc-900 dark:text-zinc-100 hover:underline cursor-pointer"
+                      onClick={onNavigateToMarketplace}
+                      className="px-3 py-1.5 rounded-md bg-black text-white dark:bg-white dark:text-black font-mono text-xs cursor-pointer"
                     >
-                      <span>Inspect Live Canvas</span>
-                      <ExternalLink className="w-3 h-3" />
+                      Browse Marketplace
                     </button>
                   </div>
+                ) : (
+                  <div className="grid md:grid-cols-2 gap-4">
+                    {activeLeasedBounties.map((b) => {
+                      const isSimulating = simulatingBountyId === b.id;
+                      return (
+                        <Card
+                          key={b.id}
+                          className="p-5 flex flex-col justify-between space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                        >
+                          <div>
+                            {/* Card Top Pill Bar */}
+                            <div className="flex items-center justify-between text-xs font-mono mb-2">
+                              <span className="text-[10px] text-zinc-400 uppercase tracking-widest">{b.category}</span>
+                              <div className="flex items-center gap-2">
+                                <Badge variant="amber">
+                                  <Clock className="w-3 h-3" />
+                                  <span>Lease: {getFormatTimeRemaining(b.leaseExpiresAt)}</span>
+                                </Badge>
+                                <span className="text-emerald-500 font-medium font-mono text-xs">
+                                  ${b.escrowAmount.toFixed(2)} USD
+                                </span>
+                              </div>
+                            </div>
+
+                            <h3 className="font-medium text-base text-zinc-950 dark:text-white mb-1.5">
+                              {b.title}
+                            </h3>
+                            <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed mb-3">
+                              {b.description}
+                            </p>
+
+                            {/* Stage & Tests Progress */}
+                            <div className="p-2.5 rounded bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 space-y-1.5 font-mono text-xs">
+                              <div className="flex items-center justify-between">
+                                <span className="text-zinc-500">Stage Checkpoint:</span>
+                                <span className="text-zinc-950 dark:text-white font-medium">{b.currentStage}</span>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-zinc-500">Milestone Tests:</span>
+                                <span className="text-emerald-500 font-medium">
+                                  {b.testsPassed}/{b.testsTotal} Passing
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleSimulateCheckpoint(b.id)}
+                              disabled={isSimulating}
+                            >
+                              <RotateCw className={`w-3 h-3 ${isSimulating ? "animate-spin" : ""}`} />
+                              <span>{isSimulating ? "Pushing Checkpoint..." : "Push MCP Checkpoint"}</span>
+                            </Button>
+
+                            <button
+                              onClick={() => onOpenReviewer(b)}
+                              className="inline-flex items-center gap-1 text-xs font-mono text-zinc-950 dark:text-white hover:underline cursor-pointer"
+                            >
+                              <span>Inspect Live Canvas</span>
+                              <ExternalLink className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Available Marketplace Bounties for Quick Lease */}
+                {openClaimableBounties.length > 0 && (
+                  <div className="pt-6 border-t border-zinc-200 dark:border-zinc-800">
+                    <h3 className="text-sm font-medium text-zinc-950 dark:text-white mb-3">
+                      Unclaimed Bounties Ready for Agent Lease
+                    </h3>
+                    <div className="space-y-2">
+                      {openClaimableBounties.map((bounty) => (
+                        <div
+                          key={bounty.id}
+                          className="p-3.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2 text-xs font-mono mb-1">
+                              <span className="text-zinc-400">{bounty.id}</span>
+                              <span className="text-emerald-500 font-medium">
+                                ${bounty.escrowAmount.toFixed(2)} USD
+                              </span>
+                            </div>
+                            <div className="text-xs font-medium text-zinc-900 dark:text-zinc-100">
+                              {bounty.title}
+                            </div>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            onClick={() => onClaimBounty?.(bounty.id)}
+                          >
+                            <Play />
+                            <span>Claim 15m Lease</span>
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Tab 3: PayPal Payout Ledger */}
+            {devTab === "payouts" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
+                    PayPal Escrow Settlement Ledger
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Verified settlements automatically disbursed upon buyer inspection and capture.
+                  </p>
                 </div>
-              ))}
+
+                <div className="rounded-md border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-[#09090b]">
+                  <table className="w-full text-left font-mono text-xs">
+                    <thead className="bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 text-[10px] uppercase">
+                      <tr>
+                        <th className="py-2.5 px-4">Bounty ID / Title</th>
+                        <th className="py-2.5 px-4">Amount</th>
+                        <th className="py-2.5 px-4">PayPal Settlement ID</th>
+                        <th className="py-2.5 px-4">Status</th>
+                        <th className="py-2.5 px-4 text-right">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                      <tr>
+                        <td className="py-3 px-4">
+                          <div className="text-zinc-900 dark:text-zinc-100 font-medium">bounty-paypal-402</div>
+                          <div className="text-[11px] text-zinc-400">PayPal x402 Micro-Settlement Flow</div>
+                        </td>
+                        <td className="py-3 px-4 text-emerald-500 font-medium">$250.00 USD</td>
+                        <td className="py-3 px-4 text-zinc-500">PAYPAL-SETTLE-8912A</td>
+                        <td className="py-3 px-4">
+                          <span className="inline-flex items-center gap-1 text-[11px] text-emerald-500">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Disbursed</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-[11px] text-zinc-400">Captured</span>
+                        </td>
+                      </tr>
+                      {settledBounties.map((b) => (
+                        <tr key={b.id}>
+                          <td className="py-3 px-4">
+                            <div className="text-zinc-900 dark:text-zinc-100 font-medium">{b.id}</div>
+                            <div className="text-[11px] text-zinc-400">{b.title}</div>
+                          </td>
+                          <td className="py-3 px-4 text-emerald-500 font-medium">${b.escrowAmount.toFixed(2)} USD</td>
+                          <td className="py-3 px-4 text-zinc-500">{b.payPalCaptureId || "PAYPAL-SETTLE-NEW"}</td>
+                          <td className="py-3 px-4">
+                            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-500">
+                              <CheckCircle2 className="w-3 h-3" />
+                              <span>Settled</span>
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="text-[11px] text-zinc-400">Captured</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
-        </section>
+        )}
+
+        {/* =========================================================================
+            BUYER CONSOLE VIEW
+           ========================================================================= */}
+        {activeRole === "BUYER" && (
+          <div className="space-y-8">
+            {/* Buyer Top Stat Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Total Locked in Escrow</div>
+                <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
+                  ${totalLockedEscrow.toFixed(2)} USD
+                </div>
+                <div className="text-[11px] font-mono text-zinc-500 mt-1">PayPal AUTHORIZE holds</div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Review Queue</div>
+                <div className="text-2xl font-mono font-medium text-emerald-500">
+                  {readyForReviewBounties.length} Deliverable
+                </div>
+                <div className="text-[11px] font-mono text-zinc-500 mt-1">Zero-Leak Canvas ready</div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">In Development</div>
+                <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
+                  {bounties.filter((b) => b.status === "IN_PROGRESS").length} Active
+                </div>
+                <div className="text-[11px] font-mono text-amber-500 mt-1">Agent leases running</div>
+              </Card>
+
+              <Card className="p-4">
+                <div className="text-[10px] font-mono uppercase text-zinc-400 mb-1">Total Settled</div>
+                <div className="text-2xl font-mono font-medium text-zinc-950 dark:text-white">
+                  {settledBounties.length} Completed
+                </div>
+                <div className="text-[11px] font-mono text-zinc-500 mt-1">Captured & delivered</div>
+              </Card>
+            </div>
+
+            {/* Buyer Sub Tabs */}
+            <div className="flex items-center justify-between border-b border-zinc-200 dark:border-zinc-800 pb-2">
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setBuyerTab("review-queue")}
+                  className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer ${
+                    buyerTab === "review-queue"
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-medium"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                  }`}
+                >
+                  Review Queue ({readyForReviewBounties.length})
+                </button>
+                <button
+                  onClick={() => setBuyerTab("bounties")}
+                  className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer ${
+                    buyerTab === "bounties"
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-medium"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                  }`}
+                >
+                  All Escrow Bounties ({bounties.length})
+                </button>
+                <button
+                  onClick={() => setBuyerTab("escrow")}
+                  className={`px-3 py-1.5 text-xs font-mono rounded-md transition-colors cursor-pointer ${
+                    buyerTab === "escrow"
+                      ? "bg-zinc-950 text-white dark:bg-white dark:text-black font-medium"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+                  }`}
+                >
+                  PayPal Authorizations
+                </button>
+              </div>
+
+              {onOpenPostBounty && (
+                <Button
+                  size="sm"
+                  onClick={onOpenPostBounty}
+                >
+                  <Plus />
+                  <span>Post New Bounty</span>
+                </Button>
+              )}
+            </div>
+
+            {/* Buyer Tab 1: Review Queue */}
+            {buyerTab === "review-queue" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
+                    Deliverables Awaiting Buyer Inspection
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Inspect the interactive application inside an opaque HTML5 canvas streaming from Playwright CDP. No source code or server credentials leaked.
+                  </p>
+                </div>
+
+                {readyForReviewBounties.length === 0 ? (
+                  <div className="p-8 text-center rounded-md border border-dashed border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/30">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
+                    <p className="text-sm font-medium text-zinc-950 dark:text-white">Review queue is clear</p>
+                    <p className="text-xs text-zinc-500 mt-1">
+                      No agent submissions are currently waiting for your review.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {readyForReviewBounties.map((bounty) => (
+                      <Card
+                        key={bounty.id}
+                        className="p-5 space-y-4 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors"
+                      >
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-100 dark:border-zinc-800/80">
+                          <div>
+                            <div className="flex items-center gap-2 text-xs font-mono mb-1">
+                              <span className="text-[10px] uppercase text-zinc-400 tracking-wider">
+                                {bounty.category}
+                              </span>
+                              <span className="text-zinc-300 dark:text-zinc-700">•</span>
+                              <span className="text-zinc-400">{bounty.id}</span>
+                            </div>
+                            <h3 className="text-base font-medium text-zinc-950 dark:text-white">
+                              {bounty.title}
+                            </h3>
+                          </div>
+
+                          <div className="text-right">
+                            <div className="text-base font-mono font-medium text-emerald-500">
+                              ${bounty.escrowAmount.toFixed(2)} USD
+                            </div>
+                            <div className="text-[11px] font-mono text-zinc-400">
+                              Auth ID: {bounty.payPalAuthorizationId || "AUTH-PAYPAL-402"}
+                            </div>
+                          </div>
+                        </div>
+
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed">
+                          {bounty.description}
+                        </p>
+
+                        {/* Test Suite & Invariants */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-3 rounded bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 font-mono text-xs">
+                          <div>
+                            <span className="text-zinc-400 block text-[10px] uppercase">Automated Tests</span>
+                            <span className="text-emerald-500 font-medium">
+                              {bounty.testsPassed}/{bounty.testsTotal} Passed (100%)
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-400 block text-[10px] uppercase">Worker Agent</span>
+                            <span className="text-zinc-800 dark:text-zinc-200">
+                              {bounty.workerAgentId || "agent-mcp-claude"}
+                            </span>
+                          </div>
+                          <div>
+                            <span className="text-zinc-400 block text-[10px] uppercase">Privacy Guarantee</span>
+                            <span className="text-zinc-800 dark:text-zinc-200">
+                              Zero DOM / 0 Source Leaks
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Inspection & Settlement Controls */}
+                        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                          <Button
+                            size="sm"
+                            onClick={() => onOpenReviewer(bounty)}
+                          >
+                            <ExternalLink />
+                            <span>Inspect Live Canvas (Playwright CDP)</span>
+                          </Button>
+
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleBuyerVoid(bounty)}
+                            >
+                              Void & Refund
+                            </Button>
+                            <Button
+                              variant="success"
+                              size="sm"
+                              onClick={() => handleBuyerCapture(bounty)}
+                            >
+                              Approve & Capture PayPal Escrow
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Buyer Tab 2: All Escrow Bounties */}
+            {buyerTab === "bounties" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
+                    All Escrow Bounties
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Comprehensive overview of all funded bounties, active agent compute leases, and settlements.
+                  </p>
+                </div>
+
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {bounties.map((b) => (
+                    <Card
+                      key={b.id}
+                      className="p-4 flex flex-col justify-between space-y-3"
+                    >
+                      <div>
+                        <div className="flex items-center justify-between text-xs font-mono mb-2">
+                          <span className="text-[10px] text-zinc-400 uppercase">{b.category}</span>
+                          <span className="font-medium text-zinc-900 dark:text-zinc-100">
+                            ${b.escrowAmount.toFixed(2)} USD
+                          </span>
+                        </div>
+                        <h4 className="font-medium text-sm text-zinc-950 dark:text-white mb-1">{b.title}</h4>
+                        <p className="text-xs text-zinc-500 line-clamp-2 leading-relaxed">{b.description}</p>
+                      </div>
+
+                      <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 flex items-center justify-between text-xs font-mono">
+                        <span
+                          className={`text-[11px] ${
+                            b.status === "READY_FOR_REVIEW"
+                              ? "text-emerald-500 font-medium"
+                              : b.status === "IN_PROGRESS"
+                              ? "text-amber-500"
+                              : b.status === "SETTLED"
+                              ? "text-zinc-400"
+                              : "text-zinc-500"
+                          }`}
+                        >
+                          {b.status.replace(/_/g, " ")}
+                        </span>
+                        {b.status === "READY_FOR_REVIEW" && (
+                          <button
+                            onClick={() => onOpenReviewer(b)}
+                            className="text-zinc-900 dark:text-white hover:underline cursor-pointer"
+                          >
+                            Inspect →
+                          </button>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Buyer Tab 3: PayPal Authorizations */}
+            {buyerTab === "escrow" && (
+              <div className="space-y-6">
+                <div>
+                  <h2 className="text-lg font-medium text-zinc-950 dark:text-white">
+                    PayPal Orders v2 Authorization Records
+                  </h2>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Two-phase commit escrow audit log. Holds are executed with <code className="text-zinc-800 dark:text-zinc-200">intent: "AUTHORIZE"</code> and settled upon verified canvas inspection.
+                  </p>
+                </div>
+
+                <div className="rounded-md border border-zinc-200 dark:border-zinc-800 overflow-hidden bg-white dark:bg-[#09090b]">
+                  <table className="w-full text-left font-mono text-xs">
+                    <thead className="bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-200 dark:border-zinc-800 text-zinc-400 text-[10px] uppercase">
+                      <tr>
+                        <th className="py-2.5 px-4">Authorization ID</th>
+                        <th className="py-2.5 px-4">Amount</th>
+                        <th className="py-2.5 px-4">Two-Phase State</th>
+                        <th className="py-2.5 px-4">Associated Bounty</th>
+                        <th className="py-2.5 px-4 text-right">Cryptographic Lock</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/80">
+                      {bounties.map((b) => (
+                        <tr key={b.id}>
+                          <td className="py-3 px-4 text-zinc-900 dark:text-zinc-100 font-medium">
+                            {b.payPalAuthorizationId || "AUTH-PP-ESCROW-HOLD"}
+                          </td>
+                          <td className="py-3 px-4 text-zinc-800 dark:text-zinc-200">
+                            ${b.escrowAmount.toFixed(2)} USD
+                          </td>
+                          <td className="py-3 px-4">
+                            {b.status === "SETTLED" ? (
+                              <span className="text-emerald-500 font-medium">CAPTURED</span>
+                            ) : b.status === "REFUNDED" ? (
+                              <span className="text-rose-500">VOIDED</span>
+                            ) : (
+                              <span className="text-amber-500 font-medium">AUTHORIZED_HOLD</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-zinc-500">{b.id}</td>
+                          <td className="py-3 px-4 text-right text-zinc-400 text-[11px]">
+                            AES-256 Key Sealed
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </div>
   );

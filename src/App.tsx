@@ -280,6 +280,10 @@ export function App() {
           onSignOut={handleSignOut}
           bounties={bounties}
           onOpenReviewer={handleOpenReviewer}
+          onClaimBounty={handleClaimBounty}
+          onBountySettled={handleBountySettled}
+          onBountyRefunded={handleBountyRefunded}
+          onOpenPostBounty={() => setIsPostBountyOpen(true)}
         />
         <ZeroLeakCanvasModal
           bounty={selectedBounty}
@@ -287,6 +291,11 @@ export function App() {
           onClose={() => setIsReviewerOpen(false)}
           onSettled={handleBountySettled}
           onRefunded={handleBountyRefunded}
+        />
+        <PostBountyModal
+          isOpen={isPostBountyOpen}
+          onClose={() => setIsPostBountyOpen(false)}
+          onBountyCreated={handleBountyCreated}
         />
       </div>
     );

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { ArrowLeft, Sun, Moon, Bot, Shield, Check, Lock, Mail } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { Input } from "./ui/input";
+import { Button } from "./ui/button";
 
 export interface UserSession {
   id: string;
@@ -236,21 +238,17 @@ export function AuthScreen({
             <label className="block text-[11px] font-mono text-zinc-700 dark:text-zinc-300 mb-0.5">
               Email Address
             </label>
-            <div className="relative">
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                  if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
-                }}
-                placeholder="you@company.com"
-                className={`w-full px-2.5 py-1.5 pl-7.5 rounded-md border bg-zinc-50 dark:bg-zinc-950 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors ${
-                  errors.email ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"
-                }`}
-              />
-              <Mail className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
-            </div>
+            <Input
+              type="email"
+              value={email}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                if (errors.email) setErrors((prev) => ({ ...prev, email: undefined }));
+              }}
+              placeholder="you@company.com"
+              startIcon={<Mail className="w-3.5 h-3.5" />}
+              className={errors.email ? "border-rose-500 focus-visible:border-rose-500" : ""}
+            />
             {errors.email && (
               <span className="text-[10px] text-rose-500 font-mono mt-0.5 block">{errors.email}</span>
             )}
@@ -260,21 +258,17 @@ export function AuthScreen({
             <label className="block text-[11px] font-mono text-zinc-700 dark:text-zinc-300 mb-0.5">
               Password
             </label>
-            <div className="relative">
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
-                }}
-                placeholder="••••••••••••"
-                className={`w-full px-2.5 py-1.5 pl-7.5 rounded-md border bg-zinc-50 dark:bg-zinc-950 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors ${
-                  errors.password ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"
-                }`}
-              />
-              <Lock className="w-3.5 h-3.5 text-zinc-400 absolute left-2.5 top-2.5" />
-            </div>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => {
+                setPassword(e.target.value);
+                if (errors.password) setErrors((prev) => ({ ...prev, password: undefined }));
+              }}
+              placeholder="••••••••••••"
+              startIcon={<Lock className="w-3.5 h-3.5" />}
+              className={errors.password ? "border-rose-500 focus-visible:border-rose-500" : ""}
+            />
             {errors.password && (
               <span className="text-[10px] text-rose-500 font-mono mt-0.5 block">{errors.password}</span>
             )}
@@ -289,7 +283,7 @@ export function AuthScreen({
                 </label>
                 <span className="text-[10px] font-mono text-zinc-400">Optional</span>
               </div>
-              <input
+              <Input
                 type="email"
                 value={paypalEmail}
                 onChange={(e) => {
@@ -297,9 +291,7 @@ export function AuthScreen({
                   if (errors.paypalEmail) setErrors((prev) => ({ ...prev, paypalEmail: undefined }));
                 }}
                 placeholder="paypal-receiver@example.com"
-                className={`w-full px-2.5 py-1.5 rounded-md border bg-zinc-50 dark:bg-zinc-950 text-xs font-mono focus:outline-none focus:ring-1 focus:ring-black dark:focus:ring-white transition-colors ${
-                  errors.paypalEmail ? "border-rose-500" : "border-zinc-200 dark:border-zinc-800"
-                }`}
+                className={errors.paypalEmail ? "border-rose-500 focus-visible:border-rose-500" : ""}
               />
               <span className="text-[10px] text-zinc-500 font-mono mt-0.5 block leading-tight">
                 Leave blank if your PayPal payout email is the same as your email address.
@@ -313,10 +305,10 @@ export function AuthScreen({
           )}
 
           <div className="pt-1.5">
-            <button
+            <Button
               type="submit"
               disabled={loading}
-              className="w-full py-2 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-mono text-xs font-medium transition-colors cursor-pointer shadow-xs disabled:opacity-50"
+              className="w-full"
             >
               {loading
                 ? "Processing..."
@@ -325,7 +317,7 @@ export function AuthScreen({
                   ? "Create Developer Account"
                   : "Create Buyer Account"
                 : "Sign In"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
