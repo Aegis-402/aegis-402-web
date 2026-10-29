@@ -1,14 +1,21 @@
 {
-	"files": [],
-	"references": [
-		{
-			"path": "./tsconfig.app.json"
-		},
-		{
-			"path": "./tsconfig.node.json"
-		},
-		{
-			"path": "./tsconfig.worker.json"
-		}
-	]
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.worker.json"
+    }
+  ],
+  "compilerOptions": {
+    "ignoreDeprecations": "6.0",
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  }
 }

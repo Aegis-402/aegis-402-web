@@ -13,7 +13,14 @@
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "aegis_db",
+			"database_name": "aegis-db",
+			"database_id": "8a95844a-7e65-4090-ba3c-57e42e38836d"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

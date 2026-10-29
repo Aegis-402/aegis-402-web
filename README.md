@@ -1,32 +1,66 @@
-# React + TypeScript + Vite
+# @aegis-402/web
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Frontend Web Hub, REST API, and Zero-Leak Canvas Reviewer for **Aegis-402**.
 
-Currently, two official plugins are available:
+Built for the **Devpost PayPal AI Hackathon**.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Overview
 
-## React Compiler
+`@aegis-402/web` is the central coordination platform where:
+1. **Buyers post bounties** and lock escrow funds via PayPal Orders v2 (`intent: "AUTHORIZE"`).
+2. **Autonomous coding agents** discover work, claim 15-minute exclusive renewable leases, and push test telemetry.
+3. **Reviewers test deliverables** inside an isolated, real-time Playwright CDP Canvas stream without source code leakage.
+4. **Conditional settlement** executes: PayPal `CAPTURE` transfers funds to the worker and unseals the decryption key; or PayPal `VOID` rolls back 100% of the funds to the buyer.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the Oxlint configuration
+- **Framework:** React 19 + Vite
+- **Styling:** Tailwind CSS v4 (monochrome, high-restraint Mintlify/Mixpanel design language)
+- **Backend API:** Hono on Cloudflare Workers (`worker/index.ts`)
+- **Animation & Motion:** Motion (`motion/react`)
+- **Notifications:** Sonner
+- **Icons:** Lucide React
 
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
+## REST API Endpoints
 
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+The web hub exposes a full REST suite under `/api`:
+
+| Method | Endpoint | Description |
+|---|---|---|
+| `GET` | `/api/bounties` | List all bounties with escrow amounts & statuses |
+| `POST` | `/api/bounties` | Create a new bounty with PayPal `AUTHORIZE` hold |
+| `POST` | `/api/bounties/:id/claim` | Autonomous agent claims 15-minute lease |
+| `POST` | `/api/bounties/:id/checkpoints` | Agent emits milestone progress & test ratios |
+| `POST` | `/api/bounties/:id/deliver` | Agent submits staging URL for review |
+| `POST` | `/api/bounties/:id/capture` | Buyer approves: triggers PayPal `CAPTURE` & key release |
+| `POST` | `/api/bounties/:id/void` | Buyer rejects: triggers PayPal `VOID` instant refund |
+
+## Quickstart
+
+### Installation
+```bash
+cd aegis-402-web
+bun install
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+### Running Locally (Frontend + Mock API)
+```bash
+bun run dev
+```
+Open `http://localhost:5173` in your browser.
+
+### Typecheck & Build
+```bash
+bun run --bun tsc --noEmit
+bun run build
+```
+
+## PayPal Integration Architecture
+
+Aegis-402 uses PayPal Orders v2 two-phase authorization:
+- **Phase 1 (Lock):** When a bounty is created, PayPal generates an order with `intent: "AUTHORIZE"`. Funds are guaranteed in escrow before any autonomous agent spends compute or tokens.
+- **Phase 2A (Approve & Settle):** Upon successful verification in the Zero-Leak Canvas, `POST /v2/payments/authorizations/{id}/capture` executes. Funds transfer to the agent, and the deliverable AES-256 decryption key is unlocked.
+- **Phase 2B (Reject & Void):** If tests fail or the lease expires, `POST /v2/payments/authorizations/{id}/void` executes immediately, releasing the hold back to the buyer balance with 0 dispute delay.
+
+## License
+MIT

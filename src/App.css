@@ -1,18 +1,23 @@
 .counter {
   font-size: 16px;
-  padding: 5px 10px;
-  border-radius: 5px;
-  color: var(--accent);
-  background: var(--accent-bg);
-  border: 2px solid transparent;
-  transition: border-color 0.3s;
+  padding: 6px 14px;
+  border-radius: 6px;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border: 1px solid transparent;
+  transition: opacity 0.2s;
   margin-bottom: 24px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
 
   &:hover {
-    border-color: var(--accent-border);
+    opacity: 0.9;
   }
   &:focus-visible {
-    outline: 2px solid var(--accent);
+    outline: 2px solid var(--ring);
     outline-offset: 2px;
   }
 }
@@ -110,25 +115,26 @@
   display: flex;
   gap: 8px;
   margin: 32px 0 0;
+  flex-wrap: wrap;
 
   .logo {
     height: 18px;
   }
 
   a {
-    color: var(--text-h);
+    color: var(--foreground);
     font-size: 16px;
     border-radius: 6px;
-    background: var(--social-bg);
+    background: var(--muted);
     display: flex;
     padding: 6px 12px;
     align-items: center;
     gap: 8px;
     text-decoration: none;
-    transition: box-shadow 0.3s;
+    transition: opacity 0.2s, background-color 0.2s;
 
     &:hover {
-      box-shadow: var(--shadow);
+      opacity: 0.8;
     }
     .button-icon {
       height: 18px;
@@ -151,6 +157,25 @@
       box-sizing: border-box;
     }
   }
+}
+
+/* Light button styling for socials in dark mode */
+:is(.dark *) #social a,
+.dark #social a {
+  background: #f4f3ec;
+  color: #08060d;
+  font-weight: 500;
+}
+
+:is(.dark *) #social a:hover,
+.dark #social a:hover {
+  background: #ffffff;
+  opacity: 1;
+}
+
+:is(.dark *) #social .button-icon,
+.dark #social .button-icon {
+  filter: none;
 }
 
 #spacer {
