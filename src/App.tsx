@@ -10,6 +10,8 @@ import { PreFooterCta } from "./components/PreFooterCta";
 import { Footer } from "./components/Footer";
 import { ZeroLeakCanvasModal } from "./components/ZeroLeakCanvasModal";
 import { PostBountyModal } from "./components/PostBountyModal";
+import { AuthScreen, type UserSession } from "./components/AuthScreen";
+import { DashboardScreen } from "./components/DashboardScreen";
 import { Toaster, toast } from "sonner";
 import { AlertCircle } from "lucide-react";
 import type { Bounty } from "./types";
@@ -64,6 +66,18 @@ const initialBounties: Bounty[] = [
   },
 ];
 
+function getScreenFromPath(): "landing" | "auth" | "dashboard" {
+  if (typeof window === "undefined") return "landing";
+  const path = window.location.pathname.toLowerCase();
+  if (path === "/auth" || path === "/login" || path === "/signup" || path === "/register") {
+    return "auth";
+  }
+  if (path === "/dashboard") {
+    return "dashboard";
+  }
+  return "landing";
+}
+
 export function App() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined") {
@@ -73,6 +87,43 @@ export function App() {
     }
     return "dark"; // Default to dark monochrome
   });
+
+  const [currentScreen, setCurrentScreen] = useState<"landing" | "auth" | "dashboard">(getScreenFromPath);
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("aegis_user_session");
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
+
+  const navigateTo = (screen: "landing" | "auth" | "dashboard") => {
+    const pathMap: Record<"landing" | "auth" | "dashboard", string> = {
+      landing: "/",
+      auth: "/auth",
+      dashboard: "/dashboard",
+    };
+    const targetPath = pathMap[screen];
+    if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
+      window.history.pushState({ screen }, "", targetPath);
+    }
+    setCurrentScreen(screen);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentScreen(getScreenFromPath());
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   const [bounties, setBounties] = useState<Bounty[]>(initialBounties);
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
@@ -174,6 +225,73 @@ export function App() {
     setBounties((prev) => [newBounty, ...prev]);
   };
 
+  const handleAuthenticated = (user: UserSession) => {
+    setCurrentUser(user);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("aegis_user_session", JSON.stringify(user));
+    }
+    navigateTo("dashboard");
+  };
+
+  const handleSignOut = () => {
+    setCurrentUser(null);
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("aegis_user_session");
+    }
+    navigateTo("landing");
+  };
+
+  const handleOpenRegisterAgent = () => {
+    if (currentUser) {
+      navigateTo("dashboard");
+    } else {
+      navigateTo("auth");
+    }
+  };
+
+  if (currentScreen === "auth") {
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors">
+        <Toaster position="bottom-right" richColors theme={theme} />
+        <AuthScreen
+          initialRole="DEVELOPER"
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onBackToHome={() => navigateTo("landing")}
+          onAuthenticated={handleAuthenticated}
+        />
+      </div>
+    );
+  }
+
+  if (currentScreen === "dashboard") {
+    if (!currentUser) {
+      navigateTo("auth");
+      return null;
+    }
+    return (
+      <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors">
+        <Toaster position="bottom-right" richColors theme={theme} />
+        <DashboardScreen
+          user={currentUser}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onNavigateToMarketplace={() => navigateTo("landing")}
+          onSignOut={handleSignOut}
+          bounties={bounties}
+          onOpenReviewer={handleOpenReviewer}
+        />
+        <ZeroLeakCanvasModal
+          bounty={selectedBounty}
+          isOpen={isReviewerOpen}
+          onClose={() => setIsReviewerOpen(false)}
+          onSettled={handleBountySettled}
+          onRefunded={handleBountyRefunded}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors">
       <Toaster position="bottom-right" richColors theme={theme} />
@@ -183,6 +301,10 @@ export function App() {
         theme={theme}
         onToggleTheme={toggleTheme}
         onOpenPostBounty={() => setIsPostBountyOpen(true)}
+        user={currentUser}
+        onOpenAuth={() => navigateTo("auth")}
+        onOpenDashboard={() => navigateTo("dashboard")}
+        onNavigateHome={() => navigateTo("landing")}
       />
 
       {/* Main Content Layout */}
@@ -191,6 +313,7 @@ export function App() {
         <HeroSection
           onOpenReviewer={() => handleOpenReviewer()}
           onOpenPostBounty={() => setIsPostBountyOpen(true)}
+          onOpenRegisterAgent={handleOpenRegisterAgent}
         />
 
         {/* Section 2: Trust & Metrics (Clean 1-line counters) */}
@@ -276,6 +399,7 @@ export function App() {
         <PreFooterCta
           onOpenPostBounty={() => setIsPostBountyOpen(true)}
           onOpenReviewer={() => handleOpenReviewer()}
+          onOpenRegisterAgent={handleOpenRegisterAgent}
         />
       </main>
 

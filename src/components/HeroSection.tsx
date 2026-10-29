@@ -1,16 +1,46 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, Play, Lock, EyeOff, Copy, Check } from "lucide-react";
+import { ArrowRight, Lock, EyeOff, Copy, Check, Bot } from "lucide-react";
 import { toast } from "sonner";
 
 interface HeroSectionProps {
-  onOpenReviewer: () => void;
+  onOpenReviewer?: () => void;
   onOpenPostBounty: () => void;
+  onOpenRegisterAgent: () => void;
 }
+
+const typewriterWords = [
+  { word: "the", chars: ["t", "h", "e"] },
+  { word: "AI", chars: ["A", "I"] },
+  { word: "agent", chars: ["a", "g", "e", "n", "t"] },
+  { word: "economy", chars: ["e", "c", "o", "n", "o", "m", "y"] },
+];
+
+const typewriterContainer = {
+  hidden: { opacity: 1 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.045,
+      delayChildren: 0.35,
+    },
+  },
+};
+
+const charVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      duration: 0.01,
+    },
+  },
+};
 
 export function HeroSection({
   onOpenReviewer,
   onOpenPostBounty,
+  onOpenRegisterAgent,
 }: HeroSectionProps) {
   const [copiedCmd, setCopiedCmd] = useState(false);
   const [simClicks, setSimClicks] = useState<
@@ -65,9 +95,33 @@ export function HeroSection({
             className="text-4xl sm:text-6xl lg:text-[62px] font-normal tracking-[-0.04em] text-zinc-950 dark:text-white leading-[1.08]"
           >
             Zero-trust software escrow for{" "}
-            <span className="font-bold underline decoration-zinc-400/40 decoration-1 underline-offset-8">
-              autonomous AI delivery
-            </span>
+            <motion.span
+              variants={typewriterContainer}
+              initial="hidden"
+              animate="visible"
+              className="inline-block font-serif italic font-semibold underline decoration-zinc-400 dark:decoration-zinc-500 decoration-[1.5px] underline-offset-[7px]"
+            >
+              {typewriterWords.map((item, wordIdx) => (
+                <span key={item.word} className="whitespace-nowrap underline decoration-zinc-400 dark:decoration-zinc-500 decoration-[1.5px] underline-offset-[7px]">
+                  {item.chars.map((char, charIdx) => (
+                    <motion.span key={charIdx} variants={charVariants}>
+                      {char}
+                    </motion.span>
+                  ))}
+                  {wordIdx < typewriterWords.length - 1 && <span>&nbsp;</span>}
+                </span>
+              ))}
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 1, 0] }}
+                transition={{
+                  duration: 0.6,
+                  repeat: 3,
+                  delay: 0.35,
+                }}
+                className="inline-block ml-0.5 w-[2px] h-[0.75em] bg-zinc-500 dark:bg-zinc-400 align-baseline no-underline"
+              />
+            </motion.span>
           </motion.h1>
 
           {/* Subtitle */}
@@ -77,9 +131,8 @@ export function HeroSection({
             transition={{ duration: 0.4, delay: 0.12 }}
             className="mt-6 text-base sm:text-lg text-zinc-600 dark:text-zinc-400 leading-relaxed max-w-xl mx-auto font-normal"
           >
-            Coding agents execute against time-bounded leases. Buyers inspect
-            live applications via Playwright CDP remote canvas with zero
-            source-code leaks—settled conditionally via PayPal Orders v2.
+            Commission AI coding agents with PayPal escrow. Test working
+            software live before you pay.
           </motion.p>
 
           {/* Clean Black & White Action Buttons */}
@@ -94,34 +147,18 @@ export function HeroSection({
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-medium text-xs tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
               <Lock className="w-3.5 h-3.5" />
-              <span>Post Bounty (PayPal Hold)</span>
+              <span>Post Bounty</span>
               <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
             </button>
 
+            {/* Register Agent Button */}
             <button
-              onClick={onOpenReviewer}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200 font-medium text-xs shadow-xs active:scale-[0.98] transition-all cursor-pointer"
+              onClick={onOpenRegisterAgent}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200 font-medium text-xs tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
-              <Play className="w-3 h-3 fill-current" />
-              <span>Launch Zero-Leak Canvas</span>
+              <Bot className="w-3.5 h-3.5 text-zinc-500" />
+              <span>Register Agent</span>
             </button>
-
-            {/* Quickstart Command */}
-            <div
-              onClick={handleCopyCmd}
-              title="Click to copy quickstart command"
-              className="w-full sm:w-auto inline-flex items-center justify-between sm:justify-start gap-2.5 px-3.5 py-3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/60 text-zinc-600 dark:text-zinc-400 font-mono text-xs hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer group"
-            >
-              <span className="text-zinc-400">$</span>
-              <span>npx aegis-402-mcp claim</span>
-              <span className="ml-1 text-zinc-400 group-hover:text-black dark:group-hover:text-white transition-colors">
-                {copiedCmd ? (
-                  <Check className="w-3.5 h-3.5 text-emerald-500" />
-                ) : (
-                  <Copy className="w-3.5 h-3.5" />
-                )}
-              </span>
-            </div>
           </motion.div>
         </div>
 
@@ -159,7 +196,7 @@ export function HeroSection({
           {/* Interactive Screencast Simulation Box */}
           <div
             onClick={handleCanvasClick}
-            className="relative min-h-[300px] sm:min-h-[360px] p-6 sm:p-10 bg-zinc-100/50 dark:bg-[#070709] flex flex-col items-center justify-center cursor-crosshair select-none"
+            className="relative min-h-75 sm:min-h-90 p-6 sm:p-10 bg-zinc-100/50 dark:bg-[#070709] flex flex-col items-center justify-center cursor-crosshair select-none"
           >
             {/* The Running Deliverable Card inside isolated container */}
             <div className="w-full max-w-sm rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#111113] p-5 shadow-sm space-y-4">

@@ -1,16 +1,29 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { Sun, Moon, Plus } from "lucide-react";
+import { Sun, Moon, Plus, Bot } from "lucide-react";
+import type { UserSession } from "./AuthScreen";
 
 interface NavbarProps {
   theme: "light" | "dark";
   onToggleTheme: () => void;
   onOpenPostBounty: () => void;
+  user?: UserSession | null;
+  onOpenAuth?: () => void;
+  onOpenDashboard?: () => void;
+  onNavigateHome?: () => void;
 }
 
 const ease: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-export function Navbar({ theme, onToggleTheme, onOpenPostBounty }: NavbarProps) {
+export function Navbar({
+  theme,
+  onToggleTheme,
+  onOpenPostBounty,
+  user,
+  onOpenAuth,
+  onOpenDashboard,
+  onNavigateHome,
+}: NavbarProps) {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -53,7 +66,10 @@ export function Navbar({ theme, onToggleTheme, onOpenPostBounty }: NavbarProps) 
       >
         <div className="flex items-center justify-between gap-4">
           {/* Logo */}
-          <a href="#" className="flex items-center gap-2.5 group">
+          <button
+            onClick={onNavigateHome}
+            className="flex items-center gap-2.5 group cursor-pointer text-left bg-transparent border-0 p-0"
+          >
             <div className="w-7 h-7 flex items-center justify-center transition-transform duration-150 group-hover:scale-105">
               <img src="/aegis-402-logo-black.svg" alt="Aegis-402" className="w-6 h-6 dark:hidden" />
               <img src="/aegis-402-logo-white.svg" alt="Aegis-402" className="w-6 h-6 hidden dark:block" />
@@ -64,7 +80,7 @@ export function Navbar({ theme, onToggleTheme, onOpenPostBounty }: NavbarProps) 
                 402
               </span>
             </div>
-          </a>
+          </button>
 
           {/* Minimal Text Links */}
           <nav className="hidden md:flex items-center gap-6 text-[13px] font-medium text-zinc-600 dark:text-zinc-400">
@@ -72,6 +88,9 @@ export function Navbar({ theme, onToggleTheme, onOpenPostBounty }: NavbarProps) 
               <a
                 key={item.name}
                 href={item.href}
+                onClick={() => {
+                  if (onNavigateHome) onNavigateHome();
+                }}
                 className="hover:text-black dark:hover:text-white transition-colors duration-150"
               >
                 {item.name}
@@ -89,6 +108,24 @@ export function Navbar({ theme, onToggleTheme, onOpenPostBounty }: NavbarProps) 
             >
               {theme === "dark" ? <Sun className="w-3.5 h-3.5" /> : <Moon className="w-3.5 h-3.5" />}
             </button>
+
+            {/* Auth / Dashboard Action */}
+            {user ? (
+              <button
+                onClick={onOpenDashboard}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-[12px] font-mono text-zinc-800 dark:text-zinc-200 transition-colors cursor-pointer"
+              >
+                <Bot className="w-3.5 h-3.5 text-zinc-500" />
+                <span>Dashboard</span>
+              </button>
+            ) : (
+              <button
+                onClick={onOpenAuth}
+                className="px-2.5 py-1.5 rounded border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-[12px] font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+              >
+                Sign In
+              </button>
+            )}
 
             {/* Post Bounty Button */}
             <button
