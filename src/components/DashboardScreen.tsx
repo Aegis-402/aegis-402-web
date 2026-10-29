@@ -22,6 +22,7 @@ import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
 import { SidebarProvider, SidebarInset } from "./ui/sidebar";
+import { TooltipProvider } from "./ui/tooltip";
 import { AppSidebar } from "./app-sidebar";
 import { SiteHeader } from "./site-header";
 import { SectionCards } from "./section-cards";
@@ -248,8 +249,9 @@ export function DashboardScreen({
   };
 
   return (
-    <SidebarProvider>
-      <div className="flex min-h-screen w-full bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 font-sans transition-colors">
+    <TooltipProvider>
+      <SidebarProvider>
+        <div className="flex min-h-screen w-full bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 font-sans transition-colors">
         {/* Modern shadcn dashboard-01 AppSidebar */}
         <AppSidebar
           user={user}
@@ -1040,5 +1042,6 @@ export function DashboardScreen({
         </SidebarInset>
       </div>
     </SidebarProvider>
+  </TooltipProvider>
   );
 }
