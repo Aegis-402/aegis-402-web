@@ -74,9 +74,9 @@ export function HeroSection({
       <HalftoneHeroBackground
         theme={theme}
         hoveredSection={hoveredSection}
-        yOffset={250}
+        yOffset={350}
         xOffset={0}
-        scale={1.0}
+        scale={1.3}
       />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
