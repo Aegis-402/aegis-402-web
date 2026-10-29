@@ -4,6 +4,7 @@ import { AEGIS_HALFTONE_DOTS } from "./aegisHalftoneData";
 interface HalftoneHeroBackgroundProps {
   theme: "light" | "dark";
   hoveredSection?: "headline" | "post-bounty" | "register-agent" | "canvas" | null;
+  yOffset?: number; // Adjust along the Y-axis: positive drops downwards, negative moves upwards
 }
 
 interface DotState {
@@ -16,6 +17,7 @@ interface DotState {
 export function HalftoneHeroBackground({
   theme,
   hoveredSection = null,
+  yOffset = 0,
 }: HalftoneHeroBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -80,14 +82,14 @@ export function HalftoneHeroBackground({
 
       ctx.scale(dpr, dpr);
 
-      // Dynamically align vertical center of emblem behind the hero headline
+      // Dynamically align vertical center of emblem behind the hero headline (+ optional yOffset)
       const headlineEl = container.parentElement?.querySelector(".text-center") as HTMLElement | null;
       if (headlineEl) {
         const hRect = headlineEl.getBoundingClientRect();
         const cRect = container.getBoundingClientRect();
-        computedCenterY = Math.max(180, (hRect.top - cRect.top) + hRect.height * 0.42);
+        computedCenterY = Math.max(180, (hRect.top - cRect.top) + hRect.height * 0.42) + yOffset;
       } else {
-        computedCenterY = Math.min(235, height * 0.28);
+        computedCenterY = Math.min(235, height * 0.28) + yOffset;
       }
 
       // Synchronize vignette mask center exactly with the emblem center
@@ -284,7 +286,7 @@ export function HalftoneHeroBackground({
       parentSection.removeEventListener("mousemove", handleMouseMove as EventListener);
       parentSection.removeEventListener("mouseleave", handleMouseLeave as EventListener);
     };
-  }, [theme, hoveredSection]);
+  }, [theme, hoveredSection, yOffset]);
 
   return (
     <div

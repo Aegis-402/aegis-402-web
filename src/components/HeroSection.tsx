@@ -70,8 +70,12 @@ export function HeroSection({
 
   return (
     <section className="relative pt-12 pb-20 md:pb-28 overflow-hidden bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 transition-colors">
-      {/* Dynamic Interactive Halftone Aegis Emblem Background */}
-      <HalftoneHeroBackground theme={theme} hoveredSection={hoveredSection} />
+      {/* Dynamic Interactive Halftone Aegis Emblem Background (adjust yOffset to drop or raise along Y-axis) */}
+      <HalftoneHeroBackground
+        theme={theme}
+        hoveredSection={hoveredSection}
+        yOffset={0}
+      />
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
         {/* Editorial Top Headline (Mintlify & Mixpanel style) */}
