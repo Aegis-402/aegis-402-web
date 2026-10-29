@@ -12,9 +12,6 @@ import {
   ArrowLeft,
   Terminal,
   ExternalLink,
-  Shield,
-  Clock,
-  Lock,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";

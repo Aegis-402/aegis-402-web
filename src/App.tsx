@@ -311,6 +311,7 @@ export function App() {
       <main className="flex-1">
         {/* Section 1: Hero Section (Headline + Centerpiece Zero-Leak Canvas Window) */}
         <HeroSection
+          theme={theme}
           onOpenReviewer={() => handleOpenReviewer()}
           onOpenPostBounty={() => setIsPostBountyOpen(true)}
           onOpenRegisterAgent={handleOpenRegisterAgent}

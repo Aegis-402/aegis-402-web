@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, Lock, EyeOff, Copy, Check, Bot } from "lucide-react";
+import { ArrowRight, Lock, EyeOff, Bot } from "lucide-react";
 import { toast } from "sonner";
+import { HalftoneHeroBackground } from "./HalftoneHeroBackground";
 
 interface HeroSectionProps {
+  theme?: "light" | "dark";
   onOpenReviewer?: () => void;
   onOpenPostBounty: () => void;
   onOpenRegisterAgent: () => void;
@@ -38,11 +40,14 @@ const charVariants = {
 };
 
 export function HeroSection({
+  theme = "dark",
   onOpenReviewer,
   onOpenPostBounty,
   onOpenRegisterAgent,
 }: HeroSectionProps) {
-  const [copiedCmd, setCopiedCmd] = useState(false);
+  const [hoveredSection, setHoveredSection] = useState<
+    "headline" | "post-bounty" | "register-agent" | "canvas" | null
+  >(null);
   const [simClicks, setSimClicks] = useState<
     Array<{ x: number; y: number; id: number }>
   >([]);
@@ -56,13 +61,6 @@ export function HeroSection({
     return () => clearInterval(interval);
   }, []);
 
-  const handleCopyCmd = () => {
-    navigator.clipboard.writeText("npx aegis-402-mcp claim");
-    setCopiedCmd(true);
-    toast.success("Command copied to clipboard");
-    setTimeout(() => setCopiedCmd(false), 2000);
-  };
-
   const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -72,9 +70,16 @@ export function HeroSection({
 
   return (
     <section className="relative pt-12 pb-20 md:pb-28 overflow-hidden bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 transition-colors">
+      {/* Dynamic Interactive Halftone Aegis Emblem Background */}
+      <HalftoneHeroBackground theme={theme} hoveredSection={hoveredSection} />
+
       <div className="max-w-6xl mx-auto px-4 sm:px-6 relative z-10">
         {/* Editorial Top Headline (Mintlify & Mixpanel style) */}
-        <div className="text-center max-w-3xl mx-auto pt-4 pb-12">
+        <div
+          onMouseEnter={() => setHoveredSection("headline")}
+          onMouseLeave={() => setHoveredSection(null)}
+          className="text-center max-w-3xl mx-auto pt-4 pb-12"
+        >
           {/* Subtle Monospace Category Label */}
           <motion.div
             initial={{ opacity: 0, y: 6 }}
@@ -144,6 +149,8 @@ export function HeroSection({
           >
             <button
               onClick={onOpenPostBounty}
+              onMouseEnter={() => setHoveredSection("post-bounty")}
+              onMouseLeave={() => setHoveredSection(null)}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-medium text-xs tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
               <Lock className="w-3.5 h-3.5" />
@@ -154,6 +161,8 @@ export function HeroSection({
             {/* Register Agent Button */}
             <button
               onClick={onOpenRegisterAgent}
+              onMouseEnter={() => setHoveredSection("register-agent")}
+              onMouseLeave={() => setHoveredSection(null)}
               className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200 font-medium text-xs tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
               <Bot className="w-3.5 h-3.5 text-zinc-500" />
@@ -167,6 +176,8 @@ export function HeroSection({
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.25 }}
+          onMouseEnter={() => setHoveredSection("canvas")}
+          onMouseLeave={() => setHoveredSection(null)}
           className="relative rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e] shadow-xl overflow-hidden"
         >
           {/* Window Chrome Header Bar */}
@@ -187,9 +198,20 @@ export function HeroSection({
               </div>
             </div>
 
-            <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-500">
-              <EyeOff className="w-3 h-3" />
-              <span>0 DOM NODES OR REPO FILES EXPOSED</span>
+            <div className="flex items-center gap-3 text-[11px] font-mono text-zinc-500">
+              <div className="flex items-center gap-1.5">
+                <EyeOff className="w-3 h-3" />
+                <span>0 DOM NODES OR REPO FILES EXPOSED</span>
+              </div>
+              {onOpenReviewer && (
+                <button
+                  type="button"
+                  onClick={onOpenReviewer}
+                  className="hidden sm:inline-flex items-center gap-1 text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
+                >
+                  Inspect Live Reviewer ↗
+                </button>
+              )}
             </div>
           </div>
 
