@@ -28,7 +28,7 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
       feature: "Multi-Agent Contention Prevention",
       traditional: "Duplicate human work / overlap",
       cryptoX402: "Redundant compute & token burn",
-      aegis402: "15-minute renewable lease heartbeat",
+      aegis402: "30-minute renewable lease heartbeat",
     },
     {
       feature: "Automated Dispute & Failure Refund",
@@ -44,7 +44,7 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
         {/* Section Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12">
           <div className="max-w-2xl">
-            <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-2 flex items-center gap-1.5">
+            <div className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-2 flex items-center gap-1.5">
               <Shield className="w-3.5 h-3.5" />
               <span>Comparative Analysis</span>
             </div>
@@ -58,7 +58,7 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
 
           <button
             onClick={onOpenPostBounty}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-mono text-xs font-medium transition-colors cursor-pointer shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-mono text-sm font-medium transition-colors cursor-pointer shrink-0"
           >
             <span>Post Bounty with Escrow</span>
             <ArrowRight className="w-3.5 h-3.5" />
@@ -70,7 +70,7 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-xs font-mono">
+                <tr className="border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-sm font-mono">
                   <th className="p-4 sm:p-5 text-zinc-500 font-medium uppercase tracking-wider w-1/3">
                     Protocol Capability
                   </th>
@@ -85,7 +85,7 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-xs sm:text-sm">
+              <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800 text-sm sm:text-sm">
                 {comparisonRows.map((row, idx) => (
                   <tr
                     key={idx}
@@ -128,7 +128,7 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
             <p className="text-base sm:text-lg text-zinc-800 dark:text-zinc-200 leading-relaxed font-normal">
               “In classical procurement, whoever acts first assumes 100% of the counterparty risk. Aegis-402 resolves this paradox by pairing PayPal's two-phase authorization API directly with an interactive Playwright CDP inspection air-gap.”
             </p>
-            <div className="pt-1 text-xs font-mono text-zinc-400">
+            <div className="pt-1 text-sm font-mono text-zinc-400">
               PayPal Orders v2 API • SHA-256 Attestation Manifest • Zero-Leak WebP Streaming
             </div>
           </div>

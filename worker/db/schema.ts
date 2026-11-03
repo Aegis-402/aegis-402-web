@@ -13,6 +13,10 @@ export const user = sqliteTable("user", {
     .default(false)
     .notNull(),
   image: text("image"),
+  role: text("role", { enum: ["BUYER", "DEVELOPER"] })
+    .default("DEVELOPER")
+    .notNull(),
+  paypalEmail: text("paypal_email"),
   createdAt: integer("created_at", { mode: "timestamp_ms" }).notNull(),
   updatedAt: integer("updated_at", { mode: "timestamp_ms" })
     .$onUpdate(() => new Date())
@@ -171,3 +175,41 @@ export const settlements = sqliteTable(
   },
   (table) => [index("settlements_bounty_idx").on(table.bountyId)]
 );
+
+// ==========================================
+// Aegis-402 Runtime Persistence (D1-backed)
+// ==========================================
+// The Hub's live bounty + agent-key state is stored as JSON payloads so the
+// full BountyRecord shape (lease tokens, checkpoints, PayPal auth ids)
+// survives worker restarts. Queryable columns cover list/filter needs.
+
+export const bountyRecords = sqliteTable(
+  "bounty_records",
+  {
+    id: text("id").primaryKey(),
+    status: text("status").notNull(),
+    creatorId: text("creator_id"),
+    payload: text("payload").notNull(), // full BountyRecord JSON
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [index("bounty_records_status_idx").on(table.status)]
+);
+
+export const agentKeyRecords = sqliteTable(
+  "agent_key_records",
+  {
+    id: text("id").primaryKey(),
+    ownerUserId: text("owner_user_id").notNull(),
+    keyHash: text("key_hash").notNull().unique(),
+    payload: text("payload").notNull(), // AgentRecord JSON (hash only, never plaintext)
+    updatedAt: integer("updated_at", { mode: "timestamp_ms" }).notNull(),
+  },
+  (table) => [
+    index("agent_key_records_owner_idx").on(table.ownerUserId),
+    index("agent_key_records_hash_idx").on(table.keyHash),
+  ]
+);
+
+// NOTE: no code bytes are stored in D1 (free-tier friendly). The hub keeps
+// only the tarball sha256; bytes live on the arbiter, buyer downloads go
+// browser → arbiter via hub-issued signed URLs.

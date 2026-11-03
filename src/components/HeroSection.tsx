@@ -91,7 +91,7 @@ export function HeroSection({
             initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-zinc-500 mb-6"
+            className="inline-flex items-center gap-2 text-sm font-mono uppercase tracking-widest text-zinc-500 mb-6"
           >
             <span>Devpost PayPal AI Hackathon 2026</span>
             <span className="text-zinc-400">•</span>
@@ -160,7 +160,7 @@ export function HeroSection({
               onClick={onOpenPostBounty}
               onMouseEnter={() => setHoveredSection("post-bounty")}
               onMouseLeave={() => setHoveredSection(null)}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-medium text-xs tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-medium text-sm tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
               <Lock className="w-3.5 h-3.5" />
               <span>Post Bounty</span>
@@ -172,7 +172,7 @@ export function HeroSection({
               onClick={onOpenRegisterAgent}
               onMouseEnter={() => setHoveredSection("register-agent")}
               onMouseLeave={() => setHoveredSection(null)}
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200 font-medium text-xs tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-200 font-medium text-sm tracking-tight transition-all cursor-pointer shadow-xs active:scale-[0.98]"
             >
               <Bot className="w-3.5 h-3.5 text-zinc-500" />
               <span>Register Agent</span>
@@ -198,7 +198,7 @@ export function HeroSection({
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500/80" />
               </div>
               <span className="hidden sm:inline-block h-3.5 w-px bg-zinc-200 dark:bg-zinc-800" />
-              <div className="flex items-center gap-2 text-xs font-mono text-zinc-500">
+              <div className="flex items-center gap-2 text-sm font-mono text-zinc-500">
                 <span>ws://localhost:9223/stream</span>
                 <span>•</span>
                 <span className="text-emerald-500 font-bold">
@@ -236,7 +236,7 @@ export function HeroSection({
                   <div className="w-5 h-5 rounded bg-[#0070ba] flex items-center justify-center text-white text-[10px] font-bold">
                     P
                   </div>
-                  <span className="text-xs font-bold text-zinc-900 dark:text-white">
+                  <span className="text-sm font-bold text-zinc-900 dark:text-white">
                     PayPal x402 FastCheckout
                   </span>
                 </div>
@@ -245,7 +245,7 @@ export function HeroSection({
                 </span>
               </div>
 
-              <div className="space-y-2 text-xs font-mono text-zinc-600 dark:text-zinc-400">
+              <div className="space-y-2 text-sm font-mono text-zinc-600 dark:text-zinc-400">
                 <div className="flex justify-between">
                   <span>Escrow Hold Balance:</span>
                   <span className="font-bold text-zinc-950 dark:text-white">
@@ -274,7 +274,7 @@ export function HeroSection({
                   setTimeout(() => setCaptured(false), 2500);
                 }}
                 disabled={captured}
-                className="w-full py-2 rounded bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black text-xs font-mono font-medium transition-all cursor-pointer disabled:opacity-50"
+                className="w-full py-2 rounded bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black text-sm font-mono font-medium transition-all cursor-pointer disabled:opacity-50"
               >
                 {captured ? "✔ CAPTURED & UNSEALED" : "SIMULATE PAYPAL CAPTURE"}
               </button>
@@ -295,7 +295,7 @@ export function HeroSection({
           </div>
 
           {/* Window Footer Status Row */}
-          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-xs font-mono text-zinc-500">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 text-sm font-mono text-zinc-500">
             <div className="flex items-center gap-4">
               <span>
                 Target:{" "}

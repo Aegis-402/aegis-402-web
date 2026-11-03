@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { z } from "zod";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";
+import { authClient } from "../lib/auth-client";
 
 export interface UserSession {
   id: string;
@@ -31,6 +32,7 @@ const signInSchema = z.object({
 const signUpSchema = z.object({
   email: z.string().trim().min(1, "Email is required").email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(1, "Please re-enter your password"),
   role: z.enum(["DEVELOPER", "BUYER"]),
   paypalEmail: z
     .string()
@@ -39,6 +41,9 @@ const signUpSchema = z.object({
     .refine((val) => !val || z.string().email().safeParse(val).success, {
       message: "Please enter a valid PayPal email address or leave blank",
     }),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
 });
 
 export function AuthScreen({
@@ -52,9 +57,10 @@ export function AuthScreen({
   const [role, setRole] = useState<"DEVELOPER" | "BUYER">(initialRole);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [paypalEmail, setPaypalEmail] = useState("");
   const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string; paypalEmail?: string }>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string; confirmPassword?: string; paypalEmail?: string }>({});
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,14 +70,15 @@ export function AuthScreen({
     const validationResult = schema.safeParse({
       email,
       password,
+      confirmPassword,
       role,
       paypalEmail: paypalEmail.trim() || undefined,
     });
 
     if (!validationResult.success) {
-      const fieldErrors: { email?: string; password?: string; paypalEmail?: string } = {};
+      const fieldErrors: { email?: string; password?: string; confirmPassword?: string; paypalEmail?: string } = {};
       for (const issue of validationResult.error.issues) {
-        const fieldName = String(issue.path[0]) as "email" | "password" | "paypalEmail";
+        const fieldName = String(issue.path[0]) as "email" | "password" | "confirmPassword" | "paypalEmail";
         if (!fieldErrors[fieldName]) {
           fieldErrors[fieldName] = issue.message;
         }
@@ -85,24 +92,39 @@ export function AuthScreen({
     setLoading(true);
 
     try {
-      const sessionUser: UserSession = {
-        id: `user-${Math.random().toString(36).substring(2, 8)}`,
-        name: email.split("@")[0] || "Developer",
-        email: email.trim(),
-        role,
-        paypalEmail: role === "DEVELOPER" ? (paypalEmail.trim() || email.trim()) : undefined,
-      };
+      const name = email.split("@")[0] || "User";
+      const payPal = role === "DEVELOPER" ? paypalEmail.trim() || email.trim() : undefined;
 
-      // Try hitting backend auth endpoint if available
-      try {
-        await fetch(`/api/auth/${mode === "signup" ? "sign-up" : "sign-in"}/email`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: sessionUser.email, password, name: sessionUser.name }),
-        });
-      } catch {
-        // Fallback gracefully for local dev / client-side state
+      const result =
+        mode === "signup"
+          ? await authClient.signUp.email({
+              email: email.trim(),
+              password,
+              name,
+              role,
+              paypalEmail: payPal,
+            })
+          : await authClient.signIn.email({ email: email.trim(), password });
+
+      if (result.error || !result.data?.user) {
+        toast.error(result.error?.message || "Authentication failed. Please try again.");
+        return;
       }
+
+      const u = result.data.user as unknown as {
+        id: string;
+        name: string;
+        email: string;
+        role?: string;
+        paypalEmail?: string | null;
+      };
+      const sessionUser: UserSession = {
+        id: u.id,
+        name: u.name,
+        email: u.email,
+        role: u.role === "BUYER" ? "BUYER" : "DEVELOPER",
+        paypalEmail: u.paypalEmail || undefined,
+      };
 
       toast.success(mode === "signup" ? "Account created successfully!" : "Signed in successfully!");
       onAuthenticated(sessionUser);
@@ -119,7 +141,7 @@ export function AuthScreen({
       <button
         type="button"
         onClick={onBackToHome}
-        className="absolute top-4 left-4 sm:top-6 sm:left-6 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xs text-xs font-mono text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer z-20 shadow-xs"
+        className="absolute top-4 left-4 sm:top-6 sm:left-6 inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xs text-sm font-mono text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer z-20 shadow-xs"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         <span>Back</span>
@@ -153,7 +175,7 @@ export function AuthScreen({
         </div>
 
         {/* Mode Switcher (Sign Up / Sign In) */}
-        <div className="grid grid-cols-2 gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono mb-3">
+        <div className="grid grid-cols-2 gap-1 p-0.5 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm font-mono mb-3">
           <button
             type="button"
             onClick={() => {
@@ -190,7 +212,7 @@ export function AuthScreen({
             <label className="block text-[10px] font-mono text-zinc-500 uppercase tracking-wider">
               Account Type
             </label>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-2 gap-2 text-sm">
               <button
                 type="button"
                 onClick={() => setRole("DEVELOPER")}
@@ -205,7 +227,7 @@ export function AuthScreen({
                   {role === "DEVELOPER" && <Check className="w-3 h-3" />}
                 </div>
                 <div>
-                  <div className="font-semibold text-xs leading-none">Agent Developer</div>
+                  <div className="font-semibold text-sm leading-none">Agent Developer</div>
                   <div className="text-[10px] text-zinc-400 font-normal mt-0.5">Build & Earn Bounties</div>
                 </div>
               </button>
@@ -224,7 +246,7 @@ export function AuthScreen({
                   {role === "BUYER" && <Check className="w-3 h-3" />}
                 </div>
                 <div>
-                  <div className="font-semibold text-xs leading-none">Bounty Buyer</div>
+                  <div className="font-semibold text-sm leading-none">Bounty Buyer</div>
                   <div className="text-[10px] text-zinc-400 font-normal mt-0.5">Post & Test Live Apps</div>
                 </div>
               </button>
@@ -273,6 +295,28 @@ export function AuthScreen({
               <span className="text-[10px] text-rose-500 font-mono mt-0.5 block">{errors.password}</span>
             )}
           </div>
+
+          {mode === "signup" && (
+            <div>
+              <label className="block text-[11px] font-mono text-zinc-700 dark:text-zinc-300 mb-0.5">
+                Confirm Password
+              </label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value);
+                  if (errors.confirmPassword) setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
+                }}
+                placeholder="••••••••••••"
+                startIcon={<Lock className="w-3.5 h-3.5" />}
+                className={errors.confirmPassword ? "border-rose-500 focus-visible:border-rose-500" : ""}
+              />
+              {errors.confirmPassword && (
+                <span className="text-[10px] text-rose-500 font-mono mt-0.5 block">{errors.confirmPassword}</span>
+              )}
+            </div>
+          )}
 
           {/* Developer-Specific PayPal Payout Email during Sign Up */}
           {mode === "signup" && role === "DEVELOPER" && (

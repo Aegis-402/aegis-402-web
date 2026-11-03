@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Area, AreaChart, CartesianGrid, XAxis } from "recharts"
+import { CartesianGrid, Line, LineChart, XAxis } from "recharts"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import {
@@ -93,7 +93,7 @@ export function ChartAreaInteractive() {
         <CardTitle className="font-mono text-base font-medium">
           Escrow Volume & Verified Settlements
         </CardTitle>
-        <CardDescription className="font-mono text-xs text-zinc-500">
+        <CardDescription className="font-mono text-sm text-zinc-500">
           PayPal Orders v2 two-phase escrow trajectory (authorized vs captured)
         </CardDescription>
         <CardAction>
@@ -104,7 +104,7 @@ export function ChartAreaInteractive() {
               setTimeRange(value[0] ?? "90d")
             }}
             variant="outline"
-            className="hidden *:data-[slot=toggle-group-item]:px-3! @[767px]/card:flex font-mono text-xs"
+            className="hidden *:data-[slot=toggle-group-item]:px-3! @[767px]/card:flex font-mono text-sm"
           >
             <ToggleGroupItem value="90d">90 Days</ToggleGroupItem>
             <ToggleGroupItem value="30d">30 Days</ToggleGroupItem>
@@ -119,12 +119,12 @@ export function ChartAreaInteractive() {
             }}
           >
             <SelectTrigger
-              className="flex w-32 font-mono text-xs @[767px]/card:hidden"
+              className="flex w-32 font-mono text-sm @[767px]/card:hidden"
               size="sm"
             >
               <SelectValue placeholder="90 Days" />
             </SelectTrigger>
-            <SelectContent className="rounded-md font-mono text-xs">
+            <SelectContent className="rounded-md font-mono text-sm">
               <SelectItem value="90d">90 Days</SelectItem>
               <SelectItem value="30d">30 Days</SelectItem>
               <SelectItem value="7d">7 Days</SelectItem>
@@ -137,17 +137,7 @@ export function ChartAreaInteractive() {
           config={chartConfig}
           className="aspect-auto h-[220px] w-full"
         >
-          <AreaChart data={filteredData}>
-            <defs>
-              <linearGradient id="fillAuthorized" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#0070ba" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#0070ba" stopOpacity={0.05} />
-              </linearGradient>
-              <linearGradient id="fillSettled" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#10b981" stopOpacity={0.8} />
-                <stop offset="95%" stopColor="#10b981" stopOpacity={0.05} />
-              </linearGradient>
-            </defs>
+          <LineChart data={filteredData}>
             <CartesianGrid vertical={false} strokeDasharray="3 3" opacity={0.3} />
             <XAxis
               dataKey="date"
@@ -177,21 +167,64 @@ export function ChartAreaInteractive() {
                 />
               }
             />
-            <Area
+            {/* Squircle (rounded-square) dot markers per data point — no line/area wash */}
+            <Line
               dataKey="authorized"
               type="monotone"
-              fill="url(#fillAuthorized)"
-              stroke="#0070ba"
-              strokeWidth={2}
+              stroke="none"
+              dot={(props: any) => (
+                <rect
+                  key={props.key}
+                  x={props.cx - 3.5}
+                  y={props.cy - 3.5}
+                  width={7}
+                  height={7}
+                  rx={2}
+                  fill="#0070ba"
+                />
+              )}
+              activeDot={(props: any) => (
+                <rect
+                  key={props.key}
+                  x={props.cx - 5}
+                  y={props.cy - 5}
+                  width={10}
+                  height={10}
+                  rx={3}
+                  fill="#0070ba"
+                />
+              )}
+              strokeWidth={0}
             />
-            <Area
+            <Line
               dataKey="settled"
               type="monotone"
-              fill="url(#fillSettled)"
-              stroke="#10b981"
-              strokeWidth={2}
+              stroke="none"
+              dot={(props: any) => (
+                <rect
+                  key={props.key}
+                  x={props.cx - 3.5}
+                  y={props.cy - 3.5}
+                  width={7}
+                  height={7}
+                  rx={2}
+                  fill="#10b981"
+                />
+              )}
+              activeDot={(props: any) => (
+                <rect
+                  key={props.key}
+                  x={props.cx - 5}
+                  y={props.cy - 5}
+                  width={10}
+                  height={10}
+                  rx={3}
+                  fill="#10b981"
+                />
+              )}
+              strokeWidth={0}
             />
-          </AreaChart>
+          </LineChart>
         </ChartContainer>
       </CardContent>
     </Card>

@@ -75,7 +75,7 @@ export function BountyCard({ bounty, onInspect, onClaim }: BountyCardProps) {
         </h3>
 
         {/* Description */}
-        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2 leading-relaxed">
           {bounty.description}
         </p>
 
@@ -107,7 +107,7 @@ export function BountyCard({ bounty, onInspect, onClaim }: BountyCardProps) {
 
       <div className="mt-5 pt-3 border-t border-zinc-100 dark:border-zinc-800/80">
         {/* Telemetry & Escrow Row */}
-        <div className="flex items-center justify-between text-xs mb-3 font-mono">
+        <div className="flex items-center justify-between text-sm mb-3 font-mono">
           <div className="flex items-center gap-1.5 text-zinc-500">
             <span>Tests:</span>
             <span className={bounty.testsPassed === bounty.testsTotal && bounty.testsTotal > 0 ? "text-emerald-500 font-medium" : "text-zinc-700 dark:text-zinc-300"}>
@@ -120,7 +120,7 @@ export function BountyCard({ bounty, onInspect, onClaim }: BountyCardProps) {
               <Lock className="w-2.5 h-2.5 text-[#0070ba]" />
               PayPal Hold
             </span>
-            <span className="font-mono text-xs font-semibold text-zinc-950 dark:text-white">
+            <span className="font-mono text-sm font-semibold text-zinc-950 dark:text-white">
               ${bounty.escrowAmount.toFixed(2)} {bounty.currency}
             </span>
           </div>
@@ -130,7 +130,7 @@ export function BountyCard({ bounty, onInspect, onClaim }: BountyCardProps) {
         {isReviewable ? (
           <button
             onClick={() => onInspect(bounty)}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-mono text-xs font-medium shadow-xs transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-md bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black font-mono text-sm font-medium shadow-xs transition-colors cursor-pointer"
           >
             <Play className="w-3.5 h-3.5 fill-current" />
             <span>Inspect Live Canvas</span>
@@ -138,21 +138,21 @@ export function BountyCard({ bounty, onInspect, onClaim }: BountyCardProps) {
         ) : isOpen ? (
           <button
             onClick={() => onClaim(bounty.id)}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-black font-mono text-xs font-medium shadow-xs transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-md bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-black font-mono text-sm font-medium shadow-xs transition-colors cursor-pointer"
           >
             <Bot className="w-3.5 h-3.5" />
-            <span>Claim 15m Lease (MCP)</span>
+            <span>Claim 30m Lease (MCP)</span>
           </button>
         ) : isInProgress ? (
           <button
             onClick={() => onInspect(bounty)}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-800 dark:text-zinc-200 font-mono text-xs font-medium transition-colors cursor-pointer"
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-zinc-800 dark:text-zinc-200 font-mono text-sm font-medium transition-colors cursor-pointer"
           >
             <Clock className="w-3.5 h-3.5 text-amber-500" />
             <span>View Active Telemetry</span>
           </button>
         ) : (
-          <div className="w-full py-2 rounded-md bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 text-center font-mono text-xs">
+          <div className="w-full py-2 rounded-md bg-zinc-100 dark:bg-zinc-900 text-zinc-400 dark:text-zinc-500 text-center font-mono text-sm">
             {isSettled ? "Settled via PayPal Capture" : "Refunded / Closed"}
           </div>
         )}

@@ -20,16 +20,17 @@ export function MidnightMcpSection() {
       status: "STDIO READY",
       code: `{
   "mcpServers": {
-    "aegis-escrow": {
-      "command": "bun",
-      "args": ["run", "./aegis-402-mcp/src/server.ts"],
+    "aegis-402": {
+      "command": "aegis-mcp",
       "env": {
-        "AEGIS_HUB_URL": "http://localhost:8787",
-        "AEGIS_AGENT_ID": "agent-mcp-claude"
+        "AEGIS_HUB_URL": "<your hub origin>"
       }
     }
   }
 }`,
+// Local install (not published): npm install -g ./aegis-402-mcp, then the
+// above config. Save the one-time dashboard key to the key file — never
+// put it in MCP config. The bootstrap prompt wires everything up.
     },
     curl: {
       lang: "bash",
@@ -100,7 +101,7 @@ const capture = await fetch(
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         {/* Section Header */}
         <div className="max-w-2xl mb-12">
-          <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-2">
+          <div className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-2">
             Protocol & Code
           </div>
           <h2 className="text-3xl sm:text-4xl font-normal tracking-tight text-zinc-950 dark:text-white">
@@ -131,7 +132,7 @@ const capture = await fetch(
                       <button
                         key={tab.id}
                         onClick={() => setActiveCodeTab(tab.id as any)}
-                        className={`px-2.5 py-1 rounded text-xs font-mono font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
+                        className={`px-2.5 py-1 rounded text-sm font-mono font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
                           isActive
                             ? "bg-black dark:bg-white text-white dark:text-black"
                             : "text-zinc-500 hover:text-black dark:hover:text-white"
@@ -146,14 +147,14 @@ const capture = await fetch(
 
                 <button
                   onClick={handleCopyCode}
-                  className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-xs font-mono transition-colors cursor-pointer"
+                  className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-sm font-mono transition-colors cursor-pointer"
                 >
                   {copied ? <Check className="w-3 h-3 text-emerald-500" /> : <Copy className="w-3 h-3 text-zinc-400" />}
                   <span>{copied ? "Copied" : "Copy"}</span>
                 </button>
               </div>
 
-              <div className="p-4 sm:p-5 font-mono text-xs text-zinc-800 dark:text-zinc-200 overflow-x-auto">
+              <div className="p-4 sm:p-5 font-mono text-sm text-zinc-800 dark:text-zinc-200 overflow-x-auto">
                 <pre className="leading-relaxed">
                   <code>{codeSnippets[activeCodeTab].code}</code>
                 </pre>
@@ -169,14 +170,14 @@ const capture = await fetch(
           {/* Right: Live Attestation & Verification Manifest */}
           <div className="lg:col-span-5 p-5 sm:p-6 flex flex-col justify-between bg-zinc-50/50 dark:bg-[#0e0e11]">
             <div>
-              <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-3">
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-3">
                 Cryptographic Attestation Receipt
               </div>
               <div className="text-sm font-bold text-zinc-950 dark:text-white mb-4">
                 SHA-256 Verified Escrow Manifest
               </div>
 
-              <div className="space-y-3 font-mono text-xs text-zinc-600 dark:text-zinc-400">
+              <div className="space-y-3 font-mono text-sm text-zinc-600 dark:text-zinc-400">
                 <div className="p-3 rounded border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#121214] space-y-1">
                   <div className="text-zinc-400 text-[10px]">PAYPAL AUTHORIZATION ID</div>
                   <div className="font-bold text-zinc-950 dark:text-white">AUTH-8921-PAYPAL-402</div>

@@ -40,7 +40,7 @@ export function Footer() {
   ];
 
   return (
-    <footer className="py-14 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] text-xs text-zinc-500 font-sans transition-colors">
+    <footer className="py-14 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] text-sm text-zinc-500 font-sans transition-colors">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
           {sections.map((sec, i) => (

@@ -58,23 +58,23 @@ export function NavUser({
             }
           >
             <Avatar className="size-8 rounded-md grayscale border border-zinc-200 dark:border-zinc-800">
-              <AvatarFallback className="rounded-md font-mono text-xs font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
+              <AvatarFallback className="rounded-md font-mono text-sm font-semibold bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100">
                 {initials}
               </AvatarFallback>
             </Avatar>
-            <div className="grid flex-1 text-left text-xs leading-tight font-mono">
+            <div className="grid flex-1 text-left text-sm leading-tight font-mono">
               <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">
                 {user.email}
               </span>
               <span className="truncate text-[10px] text-zinc-500 flex items-center gap-1">
                 {user.role === "DEVELOPER" ? (
                   <>
-                    <BotIcon className="w-3 h-3 text-emerald-500" />
+                    <BotIcon className="w-3 h-3 text-muted-foreground" />
                     <span>Developer</span>
                   </>
                 ) : (
                   <>
-                    <ShieldIcon className="w-3 h-3 text-blue-500" />
+                    <ShieldIcon className="w-3 h-3 text-muted-foreground" />
                     <span>Buyer</span>
                   </>
                 )}
@@ -83,7 +83,7 @@ export function NavUser({
             <EllipsisVerticalIcon className="ml-auto size-4 text-zinc-400" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="min-w-64 font-mono text-xs"
+            className="min-w-64 font-mono text-sm"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
@@ -92,11 +92,11 @@ export function NavUser({
               <DropdownMenuLabel className="p-0 font-normal">
                 <div className="flex items-center gap-2 px-2 py-2 text-left">
                   <Avatar className="size-8 rounded-md border border-zinc-200 dark:border-zinc-800">
-                    <AvatarFallback className="rounded-md font-mono text-xs font-semibold">
+                    <AvatarFallback className="rounded-md font-mono text-sm font-semibold">
                       {initials}
                     </AvatarFallback>
                   </Avatar>
-                  <div className="grid flex-1 text-left text-xs leading-tight">
+                  <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium text-zinc-900 dark:text-zinc-100">
                       {user.email}
                     </span>

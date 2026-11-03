@@ -45,7 +45,7 @@ export function TrustBar() {
               <div className="text-3xl sm:text-4xl font-normal tracking-tight text-zinc-950 dark:text-white font-mono">
                 {m.value}
               </div>
-              <div className="text-xs text-zinc-500 mt-1">
+              <div className="text-sm text-zinc-500 mt-1">
                 {m.detail}
               </div>
             </div>
@@ -54,12 +54,12 @@ export function TrustBar() {
 
         {/* Ecosystem Partners Row */}
         <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="text-xs font-mono uppercase tracking-widest text-zinc-400 flex items-center gap-2 shrink-0">
+          <div className="text-sm font-mono uppercase tracking-widest text-zinc-400 flex items-center gap-2 shrink-0">
             <Shield className="w-3.5 h-3.5 text-zinc-500" />
             <span>Built On Open Standards</span>
           </div>
 
-          <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-8 gap-y-2 font-mono text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+          <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-8 gap-y-2 font-mono text-sm sm:text-sm text-zinc-600 dark:text-zinc-400">
             {partners.map((p, idx) => (
               <span key={idx} className="hover:text-black dark:hover:text-white transition-colors">
                 {p}

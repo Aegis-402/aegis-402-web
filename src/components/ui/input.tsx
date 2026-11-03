@@ -22,7 +22,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
             type={type}
             data-slot="input"
             className={cn(
-              "h-8 w-full min-w-0 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 px-2.5 py-1 text-xs font-mono transition-colors outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:border-black dark:focus-visible:border-white focus-visible:ring-1 focus-visible:ring-black dark:focus-visible:ring-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+              "h-8 w-full min-w-0 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 px-2.5 py-1 text-sm font-mono transition-colors outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:border-black dark:focus-visible:border-white focus-visible:ring-1 focus-visible:ring-black dark:focus-visible:ring-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
               startIcon && "pl-8",
               endIcon && "pr-8",
               className
@@ -44,7 +44,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
         type={type}
         data-slot="input"
         className={cn(
-          "h-8 w-full min-w-0 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 px-2.5 py-1 text-xs font-mono transition-colors outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:border-black dark:focus-visible:border-white focus-visible:ring-1 focus-visible:ring-black dark:focus-visible:ring-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
+          "h-8 w-full min-w-0 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 px-2.5 py-1 text-sm font-mono transition-colors outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus-visible:border-black dark:focus-visible:border-white focus-visible:ring-1 focus-visible:ring-black dark:focus-visible:ring-white disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         {...props}

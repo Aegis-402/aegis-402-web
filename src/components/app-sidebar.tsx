@@ -1,5 +1,4 @@
 import * as React from "react"
-import { NavUser } from "@/components/nav-user"
 import {
   Sidebar,
   SidebarContent,
@@ -8,28 +7,31 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarGroup,
-  SidebarGroupLabel,
-  SidebarGroupContent,
 } from "@/components/ui/sidebar"
+import { NavMain, type NavMainItem } from "@/components/nav-main"
+import { NavSecondary, type NavSecondaryItem } from "@/components/nav-secondary"
+import { NavUser } from "@/components/nav-user"
 import {
+  BarChart3,
   Bot,
-  Clock,
-  ExternalLink,
-  Shield,
+  CheckCircle2,
+  FileCode,
   Lock,
-  ArrowLeft,
-  DollarSign,
-  Play,
+  Layers,
+  LifeBuoy,
+  Settings,
+  User,
 } from "lucide-react"
+import { toast } from "sonner"
 import type { UserSession } from "./AuthScreen"
+import type { Bounty } from "../types"
 
 interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
   user: UserSession
-  activeRole: "DEVELOPER" | "BUYER"
+  bounties: Bounty[]
+  agentCount: number
   activeTab: string
   onSelectTab: (tab: string) => void
-  onNavigateToMarketplace?: () => void
   onSignOut?: () => void
   onToggleTheme?: () => void
   theme: "light" | "dark"
@@ -37,142 +39,158 @@ interface AppSidebarProps extends React.ComponentProps<typeof Sidebar> {
 
 export function AppSidebar({
   user,
-  activeRole,
+  bounties,
+  agentCount,
   activeTab,
   onSelectTab,
-  onNavigateToMarketplace,
   onSignOut,
   onToggleTheme,
   theme,
   ...props
 }: AppSidebarProps) {
-  const developerMenuItems = [
+  const isBuyer = user?.role === "BUYER"
+  const openBountiesCount = bounties.filter((b) => b.status === "OPEN_FOR_CLAIM").length
+  const readyForReviewCount = bounties.filter((b) => b.status === "READY_FOR_REVIEW").length
+  const activeDeliverablesCount = bounties.filter(
+    (b) => b.status === "IN_PROGRESS" || b.status === "READY_FOR_REVIEW"
+  ).length
+
+  // NavMain Items: Tailored to Buyer vs Developer role
+  const navMainItems: NavMainItem[] = isBuyer
+    ? [
+        {
+          id: "marketplace",
+          title: "Marketplace",
+          icon: <Layers className="size-4 shrink-0" />,
+          badge: openBountiesCount > 0 ? openBountiesCount : undefined,
+          badgeVariant: "outline",
+        },
+        {
+          id: "approvals",
+          title: "Approvals",
+          icon: <CheckCircle2 className="size-4 shrink-0" />,
+          badge: readyForReviewCount > 0 ? readyForReviewCount : undefined,
+          badgeVariant: "outline",
+        },
+        {
+          id: "escrow",
+          title: "Payments",
+          icon: <Lock className="size-4 shrink-0" />,
+        },
+        {
+          id: "audit",
+          title: "Audit",
+          icon: <BarChart3 className="size-4 shrink-0" />,
+        },
+      ]
+    : [
+        {
+          id: "marketplace",
+          title: "Marketplace",
+          icon: <Layers className="size-4 shrink-0" />,
+          badge: openBountiesCount > 0 ? openBountiesCount : undefined,
+          badgeVariant: "outline",
+        },
+        {
+          id: "deliverables",
+          title: "My Deliverables",
+          icon: <FileCode className="size-4 shrink-0" />,
+          badge: activeDeliverablesCount > 0 ? activeDeliverablesCount : undefined,
+          badgeVariant: "outline",
+        },
+        {
+          id: "agents",
+          title: "Agents",
+          icon: <Bot className="size-4 shrink-0" />,
+          badge: agentCount > 0 ? agentCount : undefined,
+          badgeVariant: "outline",
+        },
+        {
+          id: "escrow",
+          title: "Payments",
+          icon: <Lock className="size-4 shrink-0" />,
+        },
+        {
+          id: "audit",
+          title: "Audit",
+          icon: <BarChart3 className="size-4 shrink-0" />,
+        },
+      ]
+
+  // Secondary navigation: documentation, settings, profile
+  const secondaryItems: NavSecondaryItem[] = [
     {
-      id: "fleet",
-      title: "Agent Fleet & Keys",
-      icon: <Bot className="w-4 h-4" />,
+      title: "Documentation",
+      icon: <LifeBuoy className="size-4 shrink-0" />,
+      onClick: () => toast.info("Opening Aegis-402 Developer Documentation"),
     },
     {
-      id: "leases",
-      title: "Active 15m Leases",
-      icon: <Clock className="w-4 h-4" />,
+      title: "Settings",
+      icon: <Settings className="size-4 shrink-0" />,
+      onClick: () => onSelectTab("settings"),
     },
     {
-      id: "marketplace",
-      title: "Claim Bounties",
-      icon: <Play className="w-4 h-4" />,
-    },
-    {
-      id: "payouts",
-      title: "PayPal Disbursements",
-      icon: <DollarSign className="w-4 h-4 text-emerald-500" />,
+      title: "Profile",
+      icon: <User className="size-4 shrink-0" />,
+      onClick: () => onSelectTab("profile"),
     },
   ]
-
-  const buyerMenuItems = [
-    {
-      id: "review-queue",
-      title: "Review Queue (CDP)",
-      icon: <ExternalLink className="w-4 h-4 text-emerald-500" />,
-    },
-    {
-      id: "bounties",
-      title: "All Escrow Bounties",
-      icon: <Shield className="w-4 h-4" />,
-    },
-    {
-      id: "escrow",
-      title: "PayPal Authorizations",
-      icon: <Lock className="w-4 h-4 text-[#0070ba]" />,
-    },
-  ]
-
-  const items = activeRole === "DEVELOPER" ? developerMenuItems : buyerMenuItems
 
   return (
-    <Sidebar collapsible="offcanvas" {...props} className="border-r border-zinc-200 dark:border-zinc-800">
+    <Sidebar collapsible="icon" {...props} className="border-r-0 bg-sidebar">
       {/* Brand Header */}
-      <SidebarHeader className="border-b border-zinc-200 dark:border-zinc-800 p-3">
+      <SidebarHeader className="border-b border-sidebar-border p-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <div
-              onClick={onNavigateToMarketplace}
-              className="flex items-center gap-2.5 p-1.5 rounded-md cursor-pointer hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+            <SidebarMenuButton
+              size="lg"
+              onClick={() => onSelectTab("marketplace")}
+              className="cursor-pointer group-data-[collapsible=icon]:p-0"
+              tooltip="AEGIS-402 Escrow"
             >
-              <div className="w-6 h-6 flex items-center justify-center shrink-0">
-                <img src="/aegis-402-logo-black.svg" alt="Aegis-402" className="w-5 h-5 dark:hidden" />
-                <img src="/aegis-402-logo-white.svg" alt="Aegis-402" className="w-5 h-5 hidden dark:block" />
+              <div className="flex size-8 items-center justify-center shrink-0">
+                <img
+                  src="/aegis-402-logo-black.svg"
+                  alt="Aegis-402"
+                  className="size-6 shrink-0 dark:hidden"
+                />
+                <img
+                  src="/aegis-402-logo-white.svg"
+                  alt="Aegis-402"
+                  className="size-6 shrink-0 hidden dark:block"
+                />
               </div>
-              <div className="flex flex-col font-mono leading-none">
-                <span className="text-xs font-semibold tracking-tight text-zinc-950 dark:text-white">
+              <div className="grid flex-1 text-left text-sm leading-tight font-mono">
+                <span className="truncate font-semibold tracking-tight text-foreground">
                   AEGIS-402
                 </span>
-                <span className="text-[10px] text-zinc-400 mt-0.5">
+                <span className="truncate text-[10px] text-muted-foreground">
                   Zero-Trust Escrow
                 </span>
               </div>
-            </div>
+            </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
 
-      {/* Navigation Groups */}
+      {/* Main Sidebar Navigation Content */}
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 px-3">
-            {activeRole === "DEVELOPER" ? "Developer Navigation" : "Buyer Escrow Tools"}
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {items.map((item) => (
-                <SidebarMenuItem key={item.id}>
-                  <SidebarMenuButton
-                    onClick={() => onSelectTab(item.id)}
-                    isActive={activeTab === item.id}
-                    className={`font-mono text-xs cursor-pointer ${
-                      activeTab === item.id
-                        ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-white font-medium"
-                        : "text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
-                    }`}
-                  >
-                    {item.icon}
-                    <span>{item.title}</span>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        {/* Secondary Navigation */}
-        <SidebarGroup className="mt-auto">
-          <SidebarGroupLabel className="text-[10px] font-mono uppercase tracking-wider text-zinc-400 px-3">
-            External
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={onNavigateToMarketplace}
-                  className="font-mono text-xs text-zinc-500 hover:text-zinc-950 dark:hover:text-white cursor-pointer"
-                >
-                  <ArrowLeft className="w-4 h-4" />
-                  <span>Public Marketplace</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <NavMain
+          items={navMainItems}
+          activeTab={activeTab}
+          onSelectTab={onSelectTab}
+        />
+        <NavSecondary items={secondaryItems} className="mt-auto" />
       </SidebarContent>
 
-      {/* User Session Footer */}
-      <SidebarFooter className="border-t border-zinc-200 dark:border-zinc-800 p-2">
+      {/* Sidebar Footer with Live User Account Details */}
+      <SidebarFooter className="border-t border-sidebar-border p-2">
         <NavUser
           user={{
             name: user.name || user.email.split("@")[0],
             email: user.email,
             paypalEmail: user.paypalEmail,
-            role: activeRole,
+            role: user.role || "MEMBER",
           }}
           onSignOut={onSignOut}
           onToggleTheme={onToggleTheme}

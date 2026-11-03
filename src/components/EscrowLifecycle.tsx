@@ -35,7 +35,7 @@ export function EscrowLifecycle() {
     <section id="escrow-lifecycle" className="py-20 border-t border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b]">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center max-w-2xl mx-auto mb-12">
-          <span className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-2 block">
+          <span className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-2 block">
             State Machine
           </span>
           <h2 className="text-3xl sm:text-4xl font-normal tracking-tight text-zinc-950 dark:text-white">
@@ -71,12 +71,12 @@ export function EscrowLifecycle() {
                     {s.title}
                   </h3>
 
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 leading-relaxed mb-4">
                     {s.desc}
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 font-mono text-xs">
+                <div className="pt-3 border-t border-zinc-100 dark:border-zinc-800/80 font-mono text-sm">
                   <span className="text-zinc-400 block text-[10px]">PAYPAL API SPEC:</span>
                   <span className="text-zinc-800 dark:text-zinc-200 font-medium block truncate">
                     {s.detail}

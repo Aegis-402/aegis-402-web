@@ -1,10 +1,9 @@
-import * as React from "react"
 import { Button as ButtonPrimitive } from "@base-ui/react/button"
 import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "cn"
 
 const buttonVariants = cva(
-  "inline-flex shrink-0 items-center justify-center rounded-md text-xs font-mono font-medium whitespace-nowrap transition-colors outline-none cursor-pointer select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-3.5",
+  "inline-flex shrink-0 items-center justify-center rounded-md text-sm font-mono font-medium whitespace-nowrap transition-colors outline-none cursor-pointer select-none disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg]:size-3.5",
   {
     variants: {
       variant: {
@@ -28,6 +27,7 @@ const buttonVariants = cva(
         sm: "h-7 px-2.5 text-[11px] gap-1",
         lg: "h-9 px-4 gap-2",
         icon: "size-7",
+        "icon-sm": "size-6",
       },
     },
     defaultVariants: {

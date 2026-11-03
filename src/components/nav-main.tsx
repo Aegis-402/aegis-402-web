@@ -1,4 +1,4 @@
-import { Button } from "@/components/ui/button"
+import * as React from "react"
 import {
   SidebarGroup,
   SidebarGroupContent,
@@ -6,50 +6,56 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { CirclePlusIcon, MailIcon } from "lucide-react"
+
+export interface NavMainItem {
+  id: string
+  title: string
+  url?: string
+  icon?: React.ReactNode
+  badge?: string | number
+  badgeVariant?: "default" | "outline" | "emerald" | "amber" | "destructive" | "paypal"
+}
+
+interface NavMainProps {
+  items: NavMainItem[]
+  activeTab?: string
+  onSelectTab?: (tab: string) => void
+}
 
 export function NavMain({
   items,
-}: {
-  items: {
-    title: string
-    url: string
-    icon?: React.ReactNode
-  }[]
-}) {
+  activeTab,
+  onSelectTab,
+}: NavMainProps) {
   return (
     <SidebarGroup>
-      <SidebarGroupContent className="flex flex-col gap-2">
+      <SidebarGroupContent>
         <SidebarMenu>
-          <SidebarMenuItem className="flex items-center gap-2">
-            <SidebarMenuButton
-              tooltip="Quick Create"
-              className="min-w-8 bg-primary text-primary-foreground duration-200 ease-linear hover:bg-primary/90 hover:text-primary-foreground active:bg-primary/90 active:text-primary-foreground"
-            >
-              <CirclePlusIcon
-              />
-              <span>Quick Create</span>
-            </SidebarMenuButton>
-            <Button
-              size="icon"
-              className="size-8 group-data-[collapsible=icon]:opacity-0"
-              variant="outline"
-            >
-              <MailIcon
-              />
-              <span className="sr-only">Inbox</span>
-            </Button>
-          </SidebarMenuItem>
-        </SidebarMenu>
-        <SidebarMenu>
-          {items.map((item) => (
-            <SidebarMenuItem key={item.title}>
-              <SidebarMenuButton tooltip={item.title}>
-                {item.icon}
-                <span>{item.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
+          {items.map((item) => {
+            const isActive = activeTab === item.id
+            return (
+              <SidebarMenuItem key={item.id}>
+                <SidebarMenuButton
+                  tooltip={item.title}
+                  isActive={isActive}
+                  onClick={() => onSelectTab?.(item.id)}
+                  className={`font-mono text-sm cursor-pointer transition-colors ${
+                    isActive
+                      ? "bg-zinc-100 dark:bg-zinc-800 text-zinc-950 dark:text-white font-medium"
+                      : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white"
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.title}</span>
+                  {item.badge !== undefined && item.badge !== null && (
+                    <span className="ml-auto text-[11px] font-mono text-muted-foreground/80 tabular-nums">
+                      {item.badge}
+                    </span>
+                  )}
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )
+          })}
         </SidebarMenu>
       </SidebarGroupContent>
     </SidebarGroup>

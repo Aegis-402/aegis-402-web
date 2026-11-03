@@ -1,5 +1,4 @@
-"use client"
-
+import * as React from "react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,27 +15,50 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { MoreHorizontalIcon, FolderIcon, ShareIcon, Trash2Icon } from "lucide-react"
+import { MoreHorizontalIcon, FileTextIcon, ExternalLinkIcon, CopyIcon } from "lucide-react"
+import { toast } from "sonner"
+
+export interface NavDocumentItem {
+  name: string
+  url?: string
+  description?: string
+  icon: React.ReactNode
+}
 
 export function NavDocuments({
   items,
+  title = "Protocol Attestations",
 }: {
-  items: {
-    name: string
-    url: string
-    icon: React.ReactNode
-  }[]
+  items: NavDocumentItem[]
+  title?: string
 }) {
   const { isMobile } = useSidebar()
+
+  const handleCopyLink = (item: NavDocumentItem) => {
+    navigator.clipboard.writeText(item.url || window.location.href)
+    toast.success(`Copied link for ${item.name}`)
+  }
+
   return (
     <SidebarGroup className="group-data-[collapsible=icon]:hidden">
-      <SidebarGroupLabel>Documents</SidebarGroupLabel>
+      <SidebarGroupLabel className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground px-2">
+        {title}
+      </SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <SidebarMenuItem key={item.name}>
-            <SidebarMenuButton render={<a href={item.url} />}>
+            <SidebarMenuButton
+              onClick={() => {
+                if (item.url) {
+                  window.open(item.url, "_blank")
+                } else {
+                  toast.info(item.description || item.name)
+                }
+              }}
+              className="font-mono text-sm cursor-pointer"
+            >
               {item.icon}
-              <span>{item.name}</span>
+              <span className="truncate">{item.name}</span>
             </SidebarMenuButton>
             <DropdownMenu>
               <DropdownMenuTrigger
@@ -47,41 +69,46 @@ export function NavDocuments({
                   />
                 }
               >
-                <MoreHorizontalIcon
-                />
-                <span className="sr-only">More</span>
+                <MoreHorizontalIcon className="size-4" />
+                <span className="sr-only">More options</span>
               </DropdownMenuTrigger>
               <DropdownMenuContent
-                className="w-24"
+                className="w-36 font-mono text-sm"
                 side={isMobile ? "bottom" : "right"}
                 align={isMobile ? "end" : "start"}
               >
-                <DropdownMenuItem>
-                  <FolderIcon
-                  />
-                  <span>Open</span>
+                <DropdownMenuItem
+                  onClick={() => {
+                    if (item.url) {
+                      window.open(item.url, "_blank")
+                    } else {
+                      toast.info(item.description || item.name)
+                    }
+                  }}
+                  className="cursor-pointer"
+                >
+                  <ExternalLinkIcon className="size-3.5 mr-2" />
+                  <span>View Spec</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <ShareIcon
-                  />
-                  <span>Share</span>
+                <DropdownMenuItem
+                  onClick={() => handleCopyLink(item)}
+                  className="cursor-pointer"
+                >
+                  <CopyIcon className="size-3.5 mr-2" />
+                  <span>Copy Link</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem variant="destructive">
-                  <Trash2Icon
-                  />
-                  <span>Delete</span>
+                <DropdownMenuItem
+                  onClick={() => toast.info(`${item.name} verified on Midnight Testnet`)}
+                  className="cursor-pointer"
+                >
+                  <FileTextIcon className="size-3.5 mr-2" />
+                  <span>Attestation</span>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </SidebarMenuItem>
         ))}
-        <SidebarMenuItem>
-          <SidebarMenuButton className="text-sidebar-foreground/70">
-            <MoreHorizontalIcon className="text-sidebar-foreground/70" />
-            <span>More</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
       </SidebarMenu>
     </SidebarGroup>
   )

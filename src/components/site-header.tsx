@@ -1,94 +1,113 @@
 import { Separator } from "@/components/ui/separator"
 import { SidebarTrigger } from "@/components/ui/sidebar"
+import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb"
 import { Button } from "@/components/ui/button"
-import { ArrowLeft, Plus, Sun, Moon } from "lucide-react"
+import { Plus, Sun, Moon } from "lucide-react"
 
 interface SiteHeaderProps {
-  activeRole: "DEVELOPER" | "BUYER"
-  onToggleRole: (role: "DEVELOPER" | "BUYER") => void
+  activeTab: string
+  onSelectTab?: (tab: string) => void
   onOpenPostBounty?: () => void
-  onNavigateToMarketplace?: () => void
   theme: "light" | "dark"
   onToggleTheme: () => void
 }
 
 export function SiteHeader({
-  activeRole,
-  onToggleRole,
+  activeTab,
+  onSelectTab,
   onOpenPostBounty,
-  onNavigateToMarketplace,
   theme,
   onToggleTheme,
 }: SiteHeaderProps) {
+  const getTabLabel = (tab: string) => {
+    switch (tab) {
+      case "marketplace":
+        return "Marketplace"
+      case "approvals":
+      case "review-queue":
+        return "Approvals"
+      case "deliverables":
+        return "My Deliverables"
+      case "agents":
+      case "fleet":
+        return "Agents"
+      case "escrow":
+        return "Payments"
+      case "audit":
+        return "Audit"
+      case "settings":
+        return "Settings"
+      case "profile":
+        return "Profile"
+      default:
+        return tab.replace(/-/g, " ")
+    }
+  }
+
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
-      {/* Left: Sidebar trigger & Breadcrumb */}
-      <div className="flex items-center gap-2">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mx-2 h-4 data-vertical:self-auto"
-        />
-        <div className="flex items-center gap-1.5 text-xs font-mono text-zinc-500">
-          <span className="text-zinc-900 dark:text-zinc-100 font-medium">AEGIS-402</span>
-          <span>/</span>
-          <span>{activeRole === "DEVELOPER" ? "Developer Hub" : "Buyer Console"}</span>
-        </div>
-      </div>
-
-      {/* Right: Role Switcher & Quick Actions */}
-      <div className="flex items-center gap-2.5">
-        {/* Seamless Role Switcher */}
-        <div className="inline-flex items-center rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-100 dark:bg-zinc-900 p-0.5">
-          <button
-            onClick={() => onToggleRole("DEVELOPER")}
-            className={`px-2.5 py-1 text-[11px] font-mono rounded transition-colors cursor-pointer ${
-              activeRole === "DEVELOPER"
-                ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-medium shadow-xs"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-            }`}
-          >
-            Developer Hub
-          </button>
-          <button
-            onClick={() => onToggleRole("BUYER")}
-            className={`px-2.5 py-1 text-[11px] font-mono rounded transition-colors cursor-pointer ${
-              activeRole === "BUYER"
-                ? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-white font-medium shadow-xs"
-                : "text-zinc-500 hover:text-zinc-900 dark:hover:text-white"
-            }`}
-          >
-            Buyer Console
-          </button>
+    <header className="flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border bg-background transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+      <div className="flex w-full items-center justify-between px-4 lg:px-6">
+        {/* Left: SidebarTrigger + Separator + Breadcrumb */}
+        <div className="flex items-center gap-2">
+          <SidebarTrigger className="-ml-1" />
+          <Separator
+            orientation="vertical"
+            className="mr-2 data-[orientation=vertical]:h-4"
+          />
+          <Breadcrumb>
+            <BreadcrumbList className="font-mono text-sm">
+              <BreadcrumbItem>
+                <BreadcrumbLink
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    onSelectTab?.("marketplace")
+                  }}
+                  className="cursor-pointer font-medium text-foreground hover:text-foreground/80"
+                >
+                  AEGIS-402
+                </BreadcrumbLink>
+              </BreadcrumbItem>
+              <BreadcrumbSeparator />
+              <BreadcrumbItem>
+                <BreadcrumbPage className="text-muted-foreground capitalize">
+                  {getTabLabel(activeTab)}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            </BreadcrumbList>
+          </Breadcrumb>
         </div>
 
-        {activeRole === "BUYER" && onOpenPostBounty && (
-          <Button size="sm" onClick={onOpenPostBounty} className="hidden sm:inline-flex">
-            <Plus />
-            <span>Post Bounty</span>
-          </Button>
-        )}
+        {/* Right: Primary Post Bounty CTA & Theme Toggle */}
+        <div className="flex items-center gap-2.5">
+          {onOpenPostBounty && (
+            <Button
+              size="sm"
+              onClick={onOpenPostBounty}
+              className="cursor-pointer font-mono text-sm"
+            >
+              <Plus className="size-3.5" />
+              <span>Post Bounty</span>
+            </Button>
+          )}
 
-        {onNavigateToMarketplace && (
           <Button
-            variant="ghost"
-            size="sm"
-            onClick={onNavigateToMarketplace}
-            className="hidden md:inline-flex text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white"
+            variant="outline"
+            size="icon"
+            onClick={onToggleTheme}
+            aria-label="Toggle theme"
+            className="cursor-pointer"
           >
-            <ArrowLeft />
-            <span>Marketplace</span>
+            {theme === "dark" ? <Sun className="size-4" /> : <Moon className="size-4" />}
           </Button>
-        )}
-
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={onToggleTheme}
-          aria-label="Toggle theme"
-        >
-          {theme === "dark" ? <Sun /> : <Moon />}
-        </Button>
+        </div>
       </div>
     </header>
   )

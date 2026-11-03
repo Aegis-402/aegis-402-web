@@ -9,6 +9,8 @@ const badgeVariants = cva(
       variant: {
         default:
           "bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 border border-zinc-200 dark:border-zinc-700",
+        secondary:
+          "bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800",
         outline:
           "border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400",
         emerald:

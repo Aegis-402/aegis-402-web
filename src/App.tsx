@@ -11,60 +11,18 @@ import { Footer } from "./components/Footer";
 import { ZeroLeakCanvasModal } from "./components/ZeroLeakCanvasModal";
 import { PostBountyModal } from "./components/PostBountyModal";
 import { AuthScreen, type UserSession } from "./components/AuthScreen";
+import { authClient } from "./lib/auth-client";
 import { DashboardScreen } from "./components/DashboardScreen";
 import { Toaster, toast } from "sonner";
 import { AlertCircle } from "lucide-react";
+import { PayPalProvider } from "@paypal/react-paypal-js/sdk-v6";
 import type { Bounty } from "./types";
 export type { Bounty };
 
-const initialBounties: Bounty[] = [
-  {
-    id: "bounty-paypal-402",
-    title: "PayPal x402 Micro-Settlement Flow & Webhook Gate",
-    description: "Build an interactive escrow checkout flow with HTTP 402 payment authorization, instant refund handling, and Playwright CDP zero-leak review compatibility.",
-    escrowAmount: 250.0,
-    currency: "USD",
-    status: "READY_FOR_REVIEW",
-    category: "Web App",
-    payPalAuthorizationId: "AUTH-8921-PAYPAL-402",
-    workerAgentId: "agent-mcp-claude",
-    leaseToken: "lease-h4819k",
-    leaseExpiresAt: Date.now() + 12 * 60 * 1000,
-    deliverableUrl: "https://ayiba.dev",
-    testsPassed: 14,
-    testsTotal: 14,
-    currentStage: "FINAL_POLISH",
-  },
-  {
-    id: "bounty-apimatic-sdk",
-    title: "APIMatic OpenAPI 3.0 Contract Fuzzing & Client SDK",
-    description: "Generate and validate APIMatic OpenAPI client library with strict schema contract validation and latency SLA benchmarking.",
-    escrowAmount: 350.0,
-    currency: "USD",
-    status: "IN_PROGRESS",
-    category: "API / Backend",
-    payPalAuthorizationId: "AUTH-5412-APIMATIC-99",
-    workerAgentId: "agent-mcp-cursor",
-    leaseToken: "lease-c9182x",
-    leaseExpiresAt: Date.now() + 9 * 60 * 1000,
-    testsPassed: 8,
-    testsTotal: 10,
-    currentStage: "CORE_LOGIC",
-  },
-  {
-    id: "bounty-referee-canvas",
-    title: "Playwright CDP Low-Latency WebP Viewport Streamer",
-    description: "Build an isolated headless browser streaming buffer that captures binary WebP frames at 60 FPS without leaking underlying DOM nodes or URLs.",
-    escrowAmount: 500.0,
-    currency: "USD",
-    status: "OPEN_FOR_CLAIM",
-    category: "AI Agent Tool",
-    payPalAuthorizationId: "AUTH-1092-CDP-STREAM",
-    testsPassed: 0,
-    testsTotal: 18,
-    currentStage: "SCAFFOLDING",
-  },
-];
+const PAYPAL_CLIENT_ID = (import.meta as any).env?.VITE_PAYPAL_CLIENT_ID || "";
+
+// Strict-live: no frontend seed data. Empty until /api/bounties resolves.
+const initialBounties: Bounty[] = [];
 
 function getScreenFromPath(): "landing" | "auth" | "dashboard" {
   if (typeof window === "undefined") return "landing";
@@ -89,19 +47,31 @@ export function App() {
   });
 
   const [currentScreen, setCurrentScreen] = useState<"landing" | "auth" | "dashboard">(getScreenFromPath);
-  const [currentUser, setCurrentUser] = useState<UserSession | null>(() => {
-    if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("aegis_user_session");
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch {
-          return null;
-        }
-      }
+  const { data: authSession, isPending: isSessionPending } = authClient.useSession();
+  const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+
+  // The server session (httpOnly cookie) is the single source of truth for who is signed in.
+  useEffect(() => {
+    if (isSessionPending) return;
+    if (!authSession?.user) {
+      setCurrentUser(null);
+      return;
     }
-    return null;
-  });
+    const u = authSession.user as unknown as {
+      id: string;
+      name: string;
+      email: string;
+      role?: string;
+      paypalEmail?: string | null;
+    };
+    setCurrentUser({
+      id: u.id,
+      name: u.name,
+      email: u.email,
+      role: u.role === "BUYER" ? "BUYER" : "DEVELOPER",
+      paypalEmail: u.paypalEmail || undefined,
+    });
+  }, [authSession, isSessionPending]);
 
   const navigateTo = (screen: "landing" | "auth" | "dashboard") => {
     const pathMap: Record<"landing" | "auth" | "dashboard", string> = {
@@ -125,6 +95,17 @@ export function App() {
     return () => window.removeEventListener("popstate", handlePopState);
   }, []);
 
+  // Redirect to /auth only AFTER the session has resolved — never during render.
+  // (Previously a render-time navigateTo() bounced hard-reloads at /dashboard
+  // to /auth before the session cookie could revalidate.)
+  useEffect(() => {
+    // Race-free: read better-auth's answer directly, not the lagging currentUser copy.
+    const sessionUser = authSession?.user;
+    if (!isSessionPending && currentScreen === "dashboard" && !sessionUser) {
+      navigateTo("auth");
+    }
+  }, [isSessionPending, currentScreen, authSession]);
+
   const [bounties, setBounties] = useState<Bounty[]>(initialBounties);
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
   const [selectedBounty, setSelectedBounty] = useState<Bounty | null>(null);
@@ -141,20 +122,32 @@ export function App() {
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  // Poll the hub (source of truth) so PROVISIONING → READY transitions,
+  // progress lines, and settlements appear without a reload.
   useEffect(() => {
-    fetch("/api/bounties")
-      .then((res) => {
-        if (res.ok) return res.json();
-        throw new Error("Local fallback");
-      })
-      .then((data: Bounty[]) => {
-        if (Array.isArray(data) && data.length > 0) {
-          setBounties(data);
-        }
-      })
-      .catch(() => {
-        // keep initial mock bounties
-      });
+    let cancelled = false;
+    const load = () => {
+      if (document.hidden) return;
+      fetch("/api/bounties")
+        .then((res) => {
+          if (res.ok) return res.json();
+          throw new Error("Local fallback");
+        })
+        .then((data: Bounty[]) => {
+          if (!cancelled && Array.isArray(data)) {
+            setBounties(data);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) setBounties([]);
+        });
+    };
+    load();
+    const timer = setInterval(load, 10_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -203,7 +196,7 @@ export function App() {
             : b
         )
       );
-      toast.success("15-minute lease claimed on bounty!");
+      toast.success("30-minute lease claimed on bounty!");
     } catch {
       toast.error("Failed to claim bounty.");
     }
@@ -227,17 +220,25 @@ export function App() {
 
   const handleAuthenticated = (user: UserSession) => {
     setCurrentUser(user);
-    if (typeof window !== "undefined") {
-      localStorage.setItem("aegis_user_session", JSON.stringify(user));
-    }
     navigateTo("dashboard");
   };
 
-  const handleSignOut = () => {
-    setCurrentUser(null);
-    if (typeof window !== "undefined") {
-      localStorage.removeItem("aegis_user_session");
+  const handleOpenPostBounty = () => {
+    if (!currentUser) {
+      toast.info("Sign in as a buyer to post a bounty.");
+      navigateTo("auth");
+      return;
     }
+    if (currentUser.role !== "BUYER") {
+      toast.error("Only buyer accounts can post bounties.");
+      return;
+    }
+    setIsPostBountyOpen(true);
+  };
+
+  const handleSignOut = async () => {
+    await authClient.signOut();
+    setCurrentUser(null);
     navigateTo("landing");
   };
 
@@ -265,9 +266,14 @@ export function App() {
   }
 
   if (currentScreen === "dashboard") {
-    if (!currentUser) {
-      navigateTo("auth");
-      return null;
+    if (isSessionPending || !currentUser) {
+      return (
+        <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 flex flex-col items-center justify-center gap-3 transition-colors">
+          <img src="/aegis-402-logo-black.svg" alt="Aegis-402" className="w-8 h-8 dark:hidden animate-pulse" />
+          <img src="/aegis-402-logo-white.svg" alt="Aegis-402" className="w-8 h-8 hidden dark:block animate-pulse" />
+          <p className="text-sm font-mono text-zinc-500 dark:text-zinc-400">Restoring session…</p>
+        </div>
+      );
     }
     return (
       <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 selection:bg-zinc-900 selection:text-white dark:selection:bg-white dark:selection:text-black transition-colors">
@@ -283,7 +289,7 @@ export function App() {
           onClaimBounty={handleClaimBounty}
           onBountySettled={handleBountySettled}
           onBountyRefunded={handleBountyRefunded}
-          onOpenPostBounty={() => setIsPostBountyOpen(true)}
+          onOpenPostBounty={handleOpenPostBounty}
         />
         <ZeroLeakCanvasModal
           bounty={selectedBounty}
@@ -309,7 +315,7 @@ export function App() {
       <Navbar
         theme={theme}
         onToggleTheme={toggleTheme}
-        onOpenPostBounty={() => setIsPostBountyOpen(true)}
+        onOpenPostBounty={handleOpenPostBounty}
         user={currentUser}
         onOpenAuth={() => navigateTo("auth")}
         onOpenDashboard={() => navigateTo("dashboard")}
@@ -322,7 +328,7 @@ export function App() {
         <HeroSection
           theme={theme}
           onOpenReviewer={() => handleOpenReviewer()}
-          onOpenPostBounty={() => setIsPostBountyOpen(true)}
+          onOpenPostBounty={handleOpenPostBounty}
           onOpenRegisterAgent={handleOpenRegisterAgent}
         />
 
@@ -336,13 +342,13 @@ export function App() {
         <MidnightMcpSection />
 
         {/* Section 5: Comparative Analysis Matrix (Traditional vs Crypto vs Aegis-402 PayPal Escrow) */}
-        <WhyAegisSection onOpenPostBounty={() => setIsPostBountyOpen(true)} />
+        <WhyAegisSection onOpenPostBounty={handleOpenPostBounty} />
 
         {/* Section 6: Live Bounty Marketplace */}
         <section id="marketplace" className="py-20 max-w-6xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
             <div>
-              <div className="text-xs font-mono uppercase tracking-widest text-zinc-500 mb-1.5 flex items-center gap-2">
+              <div className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-1.5 flex items-center gap-2">
                 <span>Escrow Marketplace</span>
                 <span>•</span>
                 <span className="text-zinc-700 dark:text-zinc-300 font-medium">
@@ -355,7 +361,7 @@ export function App() {
             </div>
 
             {/* Filter Tabs with Count Pills */}
-            <div className="flex flex-wrap items-center gap-1 p-1 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-xs font-mono">
+            <div className="flex flex-wrap items-center gap-1 p-1 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm font-mono">
               {[
                 { id: "ALL", label: "All" },
                 { id: "READY_FOR_REVIEW", label: "Ready to Review" },
@@ -407,7 +413,7 @@ export function App() {
 
         {/* Section 7: Quickstart Pre-Footer CTA */}
         <PreFooterCta
-          onOpenPostBounty={() => setIsPostBountyOpen(true)}
+          onOpenPostBounty={handleOpenPostBounty}
           onOpenReviewer={() => handleOpenReviewer()}
           onOpenRegisterAgent={handleOpenRegisterAgent}
         />
@@ -435,4 +441,16 @@ export function App() {
   );
 }
 
-export default App;
+export default function WrappedApp() {
+  if (!PAYPAL_CLIENT_ID) return <App />;
+  return (
+    <PayPalProvider
+      clientId={PAYPAL_CLIENT_ID}
+      environment="sandbox"
+      components={["paypal-payments"]}
+      pageType="checkout"
+    >
+      <App />
+    </PayPalProvider>
+  );
+}
