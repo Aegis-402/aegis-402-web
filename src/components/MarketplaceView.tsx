@@ -24,7 +24,9 @@ import type { Bounty } from "../types"
 
 interface MarketplaceViewProps {
   bounties: Bounty[]
+  userRole?: string
   onClaimBounty: (bountyId: string) => void
+  onDownloadBounty?: (bountyId: string) => Promise<void> | void
   onOpenReviewer: (bounty: Bounty) => void
 }
 
@@ -32,9 +34,12 @@ type SortOption = "REWARD_DESC" | "REWARD_ASC" | "TESTS_DESC" | "NEWEST"
 
 export function MarketplaceView({
   bounties,
+  userRole,
   onClaimBounty,
+  onDownloadBounty,
 }: MarketplaceViewProps) {
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null)
   // Marketplace only displays claimable open inventory, with optional settled archive
   const [activeTab, setActiveTab] = React.useState<"OPEN" | "SETTLED">("OPEN")
   const [categoryFilter, setCategoryFilter] = React.useState<string>("ALL")
@@ -105,6 +110,21 @@ export function MarketplaceView({
   }, [activeTab, openBounties, settledBounties, categoryFilter, searchQuery, sortBy])
 
   const stages = ["SCAFFOLDING", "CORE_LOGIC", "TESTING", "FINAL_POLISH"]
+  // Claiming is developer work — buyers (including the poster) never see the CTA.
+  // The server enforces this too (403 for non-DEVELOPER sessions).
+  const canClaim = userRole !== "BUYER"
+  const canDownload = (b: Bounty) =>
+    userRole === "BUYER" && b.status === "SETTLED" && !!b.artifactSha256 && !!onDownloadBounty
+
+  const handleDownload = async (bountyId: string) => {
+    if (!onDownloadBounty) return;
+    setDownloadingId(bountyId);
+    try {
+      await onDownloadBounty(bountyId);
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   return (
     <div className="space-y-5 px-4 lg:px-6">
@@ -426,10 +446,23 @@ export function MarketplaceView({
 
                   {/* Direct Action */}
                   {isSettled ? (
-                    <div className="w-full py-1.5 rounded-md bg-muted text-muted-foreground text-center font-mono text-sm">
-                      Settled via PayPal Capture
-                    </div>
-                  ) : (
+                    canDownload(bounty) ? (
+                      <Button
+                        onClick={() => handleDownload(bounty.id)}
+                        disabled={downloadingId === bounty.id}
+                        variant="outline"
+                        className="w-full font-mono text-sm cursor-pointer"
+                      >
+                        <span>
+                          {downloadingId === bounty.id ? "issuing link…" : "Download .tar.gz"}
+                        </span>
+                      </Button>
+                    ) : (
+                      <div className="w-full py-1.5 rounded-md bg-muted text-muted-foreground text-center font-mono text-sm">
+                        Settled via PayPal Capture
+                      </div>
+                    )
+                  ) : canClaim ? (
                     <Button
                       onClick={() => onClaimBounty(bounty.id)}
                       className="w-full font-mono text-sm cursor-pointer"
@@ -437,6 +470,10 @@ export function MarketplaceView({
                       <Bot className="size-3.5" />
                       <span>Claim 30m Lease (MCP)</span>
                     </Button>
+                  ) : (
+                    <div className="w-full py-1.5 rounded-md border border-border bg-muted/20 text-muted-foreground text-center font-mono text-sm">
+                      Your bounty — waiting for an agent to claim
+                    </div>
                   )}
                 </div>
               </div>
@@ -495,8 +532,20 @@ export function MarketplaceView({
                     </td>
                     <td className="py-3 px-4 text-right">
                       {isSettled ? (
-                        <span className="text-[11px] text-muted-foreground">Captured</span>
-                      ) : (
+                        canDownload(b) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleDownload(b.id)}
+                            disabled={downloadingId === b.id}
+                            className="font-mono text-sm cursor-pointer h-7"
+                          >
+                            <span>{downloadingId === b.id ? "…" : "Download"}</span>
+                          </Button>
+                        ) : (
+                          <span className="text-[11px] text-muted-foreground">Captured</span>
+                        )
+                      ) : canClaim ? (
                         <Button
                           size="sm"
                           onClick={() => onClaimBounty(b.id)}
@@ -505,6 +554,8 @@ export function MarketplaceView({
                           <Bot className="size-3" />
                           <span>Claim Lease</span>
                         </Button>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">Awaiting agent</span>
                       )}
                     </td>
                   </tr>

@@ -12,6 +12,7 @@ import {
   Lock,
   Settings,
   User,
+  Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -36,6 +37,7 @@ import { ChartAreaInteractive } from "./chart-area-interactive";
 import { MarketplaceView } from "./MarketplaceView";
 import { ReviewQueue } from "./ReviewQueue";
 import { AuditScreen } from "./AuditScreen";
+import { LeaseTimeline } from "./LeaseTimeline";
 
 interface DashboardScreenProps {
   user: UserSession;
@@ -463,7 +465,9 @@ export function DashboardScreen({
                 {(activeTab === "marketplace" || activeTab === "bounties") && (
                   <MarketplaceView
                     bounties={bounties}
+                    userRole={user.role}
                     onClaimBounty={onClaimBounty || (() => {})}
+                    onDownloadBounty={handleDownloadArtifact}
                     onOpenReviewer={onOpenReviewer}
                   />
                 )}
@@ -475,6 +479,84 @@ export function DashboardScreen({
                     onSettled={onBountySettled}
                     onRefunded={onBountyRefunded}
                   />
+                )}
+
+                {/* VIEW: Code Downloads (buyer: settled vaults) */}
+                {activeTab === "downloads" && (
+                  <div className="px-4 lg:px-6 space-y-5">
+                    <div className="pb-3 border-b border-border">
+                      <h2 className="text-base font-semibold text-foreground tracking-tight flex items-center gap-2">
+                        <Download className="size-4" />
+                        <span>Code Downloads</span>
+                      </h2>
+                      <p className="text-sm text-muted-foreground mt-0.5">
+                        Released vaults from settled bounties. Links pull straight
+                        from the arbiter and expire 7 days after settlement.
+                      </p>
+                    </div>
+
+                    {bounties.filter((b) => b.status === "SETTLED").length === 0 ? (
+                      <div className="p-8 text-center rounded-md border border-dashed border-border bg-muted/20">
+                        <Download className="size-8 text-foreground/40 mx-auto mb-2" />
+                        <p className="text-sm font-medium text-foreground">
+                          No settled code yet
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Approve a deliverable and its vault lands here for download.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {bounties
+                          .filter((b) => b.status === "SETTLED")
+                          .map((b) => (
+                            <div
+                              key={b.id}
+                              className="rounded-lg border border-border bg-card p-5 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                            >
+                              <div className="space-y-1">
+                                <div className="flex items-center gap-2 text-sm">
+                                  <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                                    {b.category}
+                                  </span>
+                                  <span className="text-muted-foreground/60">•</span>
+                                  <span className="font-mono text-[11px] text-muted-foreground">
+                                    {b.id}
+                                  </span>
+                                </div>
+                                <h3 className="text-base font-medium text-foreground tracking-tight">
+                                  {b.title}
+                                </h3>
+                                <p className="font-mono text-sm text-muted-foreground">
+                                  ${b.escrowAmount.toFixed(2)} USD
+                                  {b.settledAt
+                                    ? ` · settled ${new Date(b.settledAt).toLocaleString()}`
+                                    : ""}
+                                  {b.invoiceStatus ? ` · receipt: ${b.invoiceStatus}` : ""}
+                                </p>
+                              </div>
+                              {b.artifactSha256 ? (
+                                <Button
+                                  size="sm"
+                                  onClick={() => handleDownloadArtifact(b.id)}
+                                  disabled={downloadingId === b.id}
+                                  className="text-sm shrink-0"
+                                >
+                                  <Download className="size-3.5" />
+                                  <span>
+                                    {downloadingId === b.id ? "issuing link…" : "Download .tar.gz"}
+                                  </span>
+                                </Button>
+                              ) : (
+                                <span className="text-sm text-muted-foreground shrink-0">
+                                  No code vault (preview-only deliverable)
+                                </span>
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {/* VIEW: My Deliverables & Submissions (Developer) */}
@@ -1061,6 +1143,17 @@ export function DashboardScreen({
 
                 {/* VIEW: Escrow Audit (AG Studio) */}
                 {activeTab === "audit" && <AuditScreen bounties={bounties} theme={theme} />}
+
+                {/* VIEW: Lease Timeline (Bryntum Scheduler) */}
+                {activeTab === "timeline" && (
+                  <LeaseTimeline
+                    bounties={bounties}
+                    theme={theme}
+                    onSelectBounty={(b) => {
+                      if (b.status === "READY_FOR_REVIEW") onOpenReviewer(b);
+                    }}
+                  />
+                )}
 
                 {/* VIEW: PayPal Authorizations */}
                 {activeTab === "escrow" && (

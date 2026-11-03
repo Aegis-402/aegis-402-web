@@ -188,6 +188,10 @@ export function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ agentId: "agent-interactive-tester" }),
       });
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(err.error || `HTTP ${res.status}`);
+      }
       const data = await res.json();
       setBounties((prev) =>
         prev.map((b) =>
@@ -197,8 +201,8 @@ export function App() {
         )
       );
       toast.success("30-minute lease claimed on bounty!");
-    } catch {
-      toast.error("Failed to claim bounty.");
+    } catch (err) {
+      toast.error(`Failed to claim bounty: ${(err as Error).message}`);
     }
   };
 

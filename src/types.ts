@@ -34,6 +34,33 @@ export interface Bounty {
     artifactSha256?: string;
     sandboxId?: string;
     completedAt?: number;
+    /** Compact per-gate breakdown (scores + failing items, capped). */
+    gateDetail?: {
+      overallScore?: number;
+      contract?: {
+        score?: number;
+        passed?: boolean;
+        passedEndpoints?: number;
+        totalEndpoints?: number;
+        p95LatencyMs?: number;
+        slaPassed?: boolean;
+        failedProbes?: Array<{ endpoint?: string; statusCode?: number; errors?: string[] }>;
+      };
+      security?: {
+        score?: number;
+        passed?: boolean;
+        vulnerabilitiesFound?: number;
+        antiCheatPassed?: boolean;
+        failedChecks?: Array<{ name?: string; type?: string; details?: string }>;
+      };
+      ai?: {
+        score?: number;
+        passed?: boolean;
+        evaluator?: string;
+        summary?: string;
+        failedRequirements?: Array<{ requirement?: string; observations?: string }>;
+      };
+    };
   };
   testsPassed: number;
   testsTotal: number;

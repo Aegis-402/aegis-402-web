@@ -56,6 +56,8 @@ export interface BountyRecord {
     artifactSha256?: string;
     sandboxId?: string;
     completedAt?: number;
+    /** Compact per-gate breakdown (scores + failing items, capped). */
+    gateDetail?: Record<string, unknown>;
   };
   /** Attempt tracking: incremented on every successful claim. Drives the 1% void fee. */
   claimCount?: number;

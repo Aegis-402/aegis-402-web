@@ -1228,12 +1228,23 @@ app.post("/api/internal/bounties/:id/ready", async (c) => {
   if (body.artifactSha256 && bounty.artifactSha256 && body.artifactSha256 !== bounty.artifactSha256) {
     return c.json({ error: "Arbiter verified different bytes than the sealed vault — refusing" }, 422);
   }
+  // Per-gate detail (why a verdict is REJECTED) is buyer- and agent-visible.
+  // Cap the payload so D1 rows stay small; full logs stay on the arbiter.
+  let gateDetail: Record<string, unknown> | undefined;
+  try {
+    const raw = JSON.stringify(body.gateSummary?.detail ?? null);
+    if (raw && raw !== "null" && raw.length <= 12000) gateDetail = JSON.parse(raw) as Record<string, unknown>;
+    else if (raw && raw !== "null") gateDetail = { truncated: true, preview: raw.slice(0, 2000) };
+  } catch {
+    gateDetail = undefined;
+  }
   bounty.status = "READY_FOR_REVIEW";
   bounty.verificationSummary = {
     verdict: typeof body.gateSummary?.verdict === "string" ? body.gateSummary.verdict : undefined,
     artifactSha256: bounty.artifactSha256,
     sandboxId: body.sandboxId,
     completedAt: Date.now(),
+    gateDetail,
   };
   bounty.latestProgress = undefined;
   await putBountyRecord(db, bounty);

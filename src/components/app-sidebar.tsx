@@ -14,7 +14,9 @@ import { NavUser } from "@/components/nav-user"
 import {
   BarChart3,
   Bot,
+  CalendarClock,
   CheckCircle2,
+  Download,
   FileCode,
   Lock,
   Layers,
@@ -73,9 +75,19 @@ export function AppSidebar({
           badgeVariant: "outline",
         },
         {
+          id: "downloads",
+          title: "Downloads",
+          icon: <Download className="size-4 shrink-0" />,
+        },
+        {
           id: "escrow",
           title: "Payments",
           icon: <Lock className="size-4 shrink-0" />,
+        },
+        {
+          id: "timeline",
+          title: "Timeline",
+          icon: <CalendarClock className="size-4 shrink-0" />,
         },
         {
           id: "audit",
@@ -109,6 +121,11 @@ export function AppSidebar({
           id: "escrow",
           title: "Payments",
           icon: <Lock className="size-4 shrink-0" />,
+        },
+        {
+          id: "timeline",
+          title: "Timeline",
+          icon: <CalendarClock className="size-4 shrink-0" />,
         },
         {
           id: "audit",

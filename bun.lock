@@ -6,6 +6,8 @@
       "name": "aegis-402-web",
       "dependencies": {
         "@base-ui/react": "^1.9.0",
+        "@bryntum/scheduler": "npm:@bryntum/scheduler-trial",
+        "@bryntum/scheduler-react": "^7.3.8",
         "@dnd-kit/core": "^6.3.1",
         "@dnd-kit/modifiers": "^9.0.0",
         "@dnd-kit/sortable": "^10.0.0",
@@ -129,6 +131,12 @@
     "@better-auth/utils": ["@better-auth/utils@0.5.1", "", { "dependencies": { "@noble/hashes": "^2.0.1" } }, "sha512-WETqw5vQ52uQ/xwWR4E8rTgT6fDEr/wnS+otDNkBCa/69281FCF32OKDdQUcahMCnjsvqXBNiEvAQHFB0EVRRg=="],
 
     "@better-fetch/fetch": ["@better-fetch/fetch@1.3.3", "", {}, "sha512-U6SlDt/GUWtK2JAxS/NhdoYTEim+EL1G5byz2TUj83KjLZBUpYzb5SmX0aXaCnbGkAjFKnV/o/0+cyXMbEcqqg=="],
+
+    "@bryntum/scheduler": ["@bryntum/scheduler-trial@7.3.8", "", { "dependencies": { "@bryntum/scheduler-trial-lib": "1.0.1" } }, "sha512-VyZvV5koom8Td4DQF1aGMKpT7SKVieSMeVd0CuzEF4sctx2+bxoXXYeWxgLkWPzuKWJ9p8AxP4a06aYvxo0NvA=="],
+
+    "@bryntum/scheduler-react": ["@bryntum/scheduler-react@7.3.8", "", {}, "sha512-PTzGFzsCrRoqLbbVqHlJ4sO8BSEEPzIkpVsCEwVy4Ci9hQlbVD62dTKcU35kTp81NhuDPw85l9Jj0xeQfCpZGg=="],
+
+    "@bryntum/scheduler-trial-lib": ["@bryntum/scheduler-trial-lib@1.0.1", "", {}, "sha512-gTrNKz2O7JdNalEU9hma0fYyZ1mGhXXb6yCn/+E+SPjRyg/qFad1bQ7vfBUFitw3S3eB66IdtAZLD+QCtiIUKw=="],
 
     "@cloudflare/kv-asset-handler": ["@cloudflare/kv-asset-handler@0.5.0", "", {}, "sha512-jxQYkj8dSIzc0cD6cMMNdOc1UVjqSqu8BZdor5s8cGjW2I8BjODt/kWPVdY+u9zj3ms75Q5qaZgnxUad83+eAg=="],
 

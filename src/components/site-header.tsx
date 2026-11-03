@@ -33,6 +33,8 @@ export function SiteHeader({
       case "approvals":
       case "review-queue":
         return "Approvals"
+      case "downloads":
+        return "Downloads"
       case "deliverables":
         return "My Deliverables"
       case "agents":
@@ -40,6 +42,8 @@ export function SiteHeader({
         return "Agents"
       case "escrow":
         return "Payments"
+      case "timeline":
+        return "Timeline"
       case "audit":
         return "Audit"
       case "settings":

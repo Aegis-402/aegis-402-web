@@ -8,6 +8,9 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), cloudflare(), tailwindcss()],
+  optimizeDeps: {
+    include: ["@bryntum/scheduler", "@bryntum/scheduler-react"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

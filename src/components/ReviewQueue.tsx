@@ -25,13 +25,102 @@ interface ReviewQueueProps {
 
 const isWebApp = (b: Bounty) => /web/i.test(b.category);
 
-function Meta({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
+function Meta({ label, children }: { label: string; children: React.ReactNode }) {  return (
     <div>
       <span className="text-[10px] uppercase tracking-wider text-muted-foreground block">
         {label}
       </span>
       <span className="font-mono text-sm text-foreground">{children}</span>
+    </div>
+  );
+}
+
+type GateDetailShape = NonNullable<NonNullable<Bounty["verificationSummary"]>["gateDetail"]>;
+
+function GateRow({
+  name,
+  passed,
+  score,
+  children,
+}: {
+  name: string;
+  passed?: boolean;
+  score?: number;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="pt-2 mt-2 border-t border-border/60 first:border-t-0 first:pt-0 first:mt-0">
+      <div className="flex items-center justify-between font-mono text-sm">
+        <span className="flex items-center gap-1.5">
+          <span
+            className={`size-1.5 rounded-full ${passed === false ? "bg-rose-500" : "bg-emerald-500"}`}
+          />
+          <span className="text-foreground">{name}</span>
+        </span>
+        <span className="text-muted-foreground">
+          {passed === false ? "failed" : "passed"}
+          {typeof score === "number" ? ` · ${score}/100` : ""}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** Per-gate breakdown: why the machine verdict is what it is. Same data agents see in list JSON. */
+function GateDetail({ detail }: { detail: GateDetailShape }) {
+  const c = detail.contract;
+  const s = detail.security;
+  const a = detail.ai;
+  return (
+    <div className="mt-2 rounded-md border border-border bg-card p-3 text-sm">
+      {typeof detail.overallScore === "number" && (
+        <div className="font-mono text-sm text-muted-foreground mb-1">
+          Overall gate score: <span className="text-foreground">{detail.overallScore}/100</span>
+        </div>
+      )}
+      {c && (
+        <GateRow name="Contract probing" passed={c.passed} score={c.score}>
+          <p className="font-mono text-sm text-muted-foreground mt-1">
+            {c.passedEndpoints ?? "?"}/{c.totalEndpoints ?? "?"} endpoints
+            {typeof c.p95LatencyMs === "number" ? ` · p95 ${c.p95LatencyMs}ms` : ""}
+            {c.slaPassed === false ? " · SLA breached" : ""}
+          </p>
+          {(c.failedProbes || []).map((p, i) => (
+            <p key={i} className="font-mono text-sm text-rose-500 mt-1">
+              {p.endpoint} → HTTP {p.statusCode}
+              {(p.errors || []).slice(0, 1).map((e, j) => (
+                <span key={j} className="block text-muted-foreground">{e}</span>
+              ))}
+            </p>
+          ))}
+        </GateRow>
+      )}
+      {s && (
+        <GateRow name="Security & anti-cheat" passed={s.passed} score={s.score}>
+          <p className="font-mono text-sm text-muted-foreground mt-1">
+            {s.vulnerabilitiesFound ?? 0} vulnerabilities
+            {s.antiCheatPassed === false ? " · mock/stub detected" : ""}
+          </p>
+          {(s.failedChecks || []).map((ch, i) => (
+            <p key={i} className="font-mono text-sm text-rose-500 mt-1">
+              {ch.name || ch.type}
+              {ch.details ? <span className="block text-muted-foreground">{ch.details}</span> : null}
+            </p>
+          ))}
+        </GateRow>
+      )}
+      {a && (
+        <GateRow name="AI semantic audit" passed={a.passed} score={a.score}>
+          {a.summary ? <p className="text-sm text-muted-foreground mt-1">{a.summary}</p> : null}
+          {(a.failedRequirements || []).map((r, i) => (
+            <p key={i} className="text-sm text-rose-500 mt-1">
+              {r.requirement}
+              {r.observations ? <span className="block text-muted-foreground">{r.observations}</span> : null}
+            </p>
+          ))}
+        </GateRow>
+      )}
     </div>
   );
 }
@@ -50,6 +139,11 @@ export function ReviewQueue({
 
   const queue = bounties.filter((b) => b.status === "READY_FOR_REVIEW");
   const provisioning = bounties.filter((b) => b.status === "PROVISIONING");
+  // Infra failures go back to IN_PROGRESS with provisionError: no sandbox, so
+  // nothing to review — but the buyer should still see WHY it is stuck.
+  const failedProvision = bounties.filter(
+    (b) => b.status === "IN_PROGRESS" && b.provisionError
+  );
   const selected = queue.find((b) => b.id === selectedId) || null;
 
   const open = (id: string) => {
@@ -78,6 +172,17 @@ export function ReviewQueue({
       const data = (await res.json()) as { developerPayout?: string; platformFee?: string; payoutStatus?: string };
       onSettled?.(b.id);
       toast.success(`Settled: ${data.developerPayout || ""} → developer, ${data.platformFee || ""} platform fee. Code unlocked for download.`);
+      // Hand the buyer the code immediately — same signed-URL flow as Payments.
+      // No vault (e.g. pure preview deliverables) → skip silently, toast already confirms.
+      try {
+        const dl = await fetch(`/api/bounties/${b.id}/artifact/download`);
+        if (dl.ok) {
+          const { url } = (await dl.json()) as { url: string };
+          if (url) window.location.href = url;
+        }
+      } catch {
+        // Download stays available under Payments → escrow row.
+      }
       setModal(null);
       back();
     } catch (err) {
@@ -260,11 +365,11 @@ export function ReviewQueue({
           {selected.verificationSummary && (
             <div className="rounded-md border border-border bg-muted/20 p-3 text-sm">
               <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">
-                Arbiter gate report
+                Arbiter gate report (automated — not your decision)
               </div>
               <div className="flex flex-wrap gap-x-6 gap-y-1 font-mono">
                 <span>
-                  <span className="text-muted-foreground">Verdict: </span>
+                  <span className="text-muted-foreground">Machine verdict: </span>
                   <span className="text-foreground">{selected.verificationSummary.verdict || "—"}</span>
                 </span>
                 <span>
@@ -276,6 +381,15 @@ export function ReviewQueue({
                   </span>
                 </span>
               </div>
+              {selected.verificationSummary.verdict === "REJECTED" && (
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  One or more automated gates failed on the sandbox. You can still
+                  approve, or reject &amp; requeue with the failure reason for the next agent.
+                </p>
+              )}
+              {selected.verificationSummary.gateDetail && (
+                <GateDetail detail={selected.verificationSummary.gateDetail} />
+              )}
             </div>
           )}
         </div>
@@ -477,6 +591,34 @@ export function ReviewQueue({
               <p className="text-[11px] text-muted-foreground">
                 The arbiter is building an isolated sandbox from the sealed code vault.
                 Your preview appears here automatically once it&apos;s ready.
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {failedProvision.length > 0 && (
+        <div className="space-y-3">
+          <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground">
+            Needs agent attention (sandbox failed — escrow untouched)
+          </div>
+          {failedProvision.map((b) => (
+            <div
+              key={b.id}
+              className="rounded-lg border border-rose-500/40 bg-card p-5 space-y-2 shadow-sm"
+            >
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-medium text-foreground tracking-tight">
+                  {b.title}
+                </div>
+                <Badge variant="destructive" className="text-[10px] tracking-wide shrink-0">
+                  Provision failed
+                </Badge>
+              </div>
+              <p className="font-mono text-sm text-rose-500">{b.provisionError}</p>
+              <p className="text-[11px] text-muted-foreground">
+                The agent sees the same error and can fix, re-seal, and re-deliver.
+                Re-delivery retries provisioning automatically.
               </p>
             </div>
           ))}
