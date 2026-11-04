@@ -94,6 +94,19 @@ app.get("/api/health", (c) => {
   });
 });
 
+// Public runtime config (no auth — landing needs the PayPal client id
+// pre-login). Single supply path: values come from worker env, which is
+// `.dev.vars` locally and dashboard Variables in prod. Never put secrets
+// here — everything returned is shipped to the browser by design.
+app.get("/api/public-config", async (c) => {
+  const envMap = c.env as unknown as Record<string, string | undefined>;
+  return c.json({
+    paypalClientId: envMap.PAYPAL_CLIENT_ID || "",
+    arbiterWsUrl: envMap.ARBITER_WS_URL || "wss://aegis-arbiter-t.ayiba.dev/screencast",
+    agStudioLicenseKey: envMap.AG_STUDIO_LICENSE_KEY || "",
+  });
+});
+
 // Public view: never expose the deliverable URL, lease token, or the full
 // OpenAPI blob (zero-leak invariant + payload size). Spec metadata
 // (hash/count) stays so lists can badge "contract attached"; the blob is

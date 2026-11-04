@@ -16,7 +16,7 @@ import { Badge } from "./ui/badge";
 
 const ARBITER_WS_URL =
   (import.meta as unknown as { env?: Record<string, string | undefined> }).env?.VITE_ARBITER_WS_URL ||
-  "ws://localhost:7144/screencast";
+  "wss://aegis-arbiter-t.ayiba.dev/screencast";
 
 interface ZeroLeakCanvasViewerProps {
   bounty: Bounty;
