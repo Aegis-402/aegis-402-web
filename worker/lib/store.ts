@@ -71,6 +71,17 @@ export interface BountyRecord {
   techConstraints?: string;
   timeline?: string;
   referenceLinks?: string[];
+  /**
+   * Buyer-attached OpenAPI contract (source of truth for contract gates).
+   * Normalized OpenAPI 3.x JSON (≤100KB). Required for "API / Backend"
+   * bounties, optional otherwise. Immutable: no update route mutates it,
+   * so the contract a worker claims against is the contract it is graded on.
+   * The full blob is stripped from public list/detail views — fetch via
+   * GET /api/bounties/:id/openapi. Tarball specs are ignored by the arbiter.
+   */
+  openApiSpec?: string;
+  openApiSpecHash?: string;
+  openApiEndpointCount?: number;
   /** Settlement ledger (5% platform fee on capture, 1% void fee when attempted). */
   settledAt?: number;
   payoutBatchId?: string;

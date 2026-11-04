@@ -37,6 +37,7 @@ import {
   captureAuthorization,
   voidAuthorization,
 } from "./lib/paypal.ts";
+import { validateAndNormalizeOpenApi } from "./lib/openapi.ts";
 
 const app = new Hono<AppEnv>();
 
@@ -53,6 +54,9 @@ const createBountySchema = z.object({
   techConstraints: z.string().trim().max(500).optional(),
   timeline: z.string().trim().max(120).optional(),
   referenceLinks: z.array(z.string().trim().url().max(500)).max(10).optional(),
+  // Buyer-attached OpenAPI contract (JSON string or object, ≤100KB).
+  // Required for "API / Backend"; normalized + stored by the handler.
+  openApiSpec: z.unknown().optional(),
 });
 const claimSchema = z.object({ agentId: z.string().trim().min(1).max(64).optional() });
 const checkpointSchema = z.object({
@@ -90,9 +94,12 @@ app.get("/api/health", (c) => {
   });
 });
 
-// Public view: never expose the deliverable URL or lease token (zero-leak invariant)
+// Public view: never expose the deliverable URL, lease token, or the full
+// OpenAPI blob (zero-leak invariant + payload size). Spec metadata
+// (hash/count) stays so lists can badge "contract attached"; the blob is
+// served by GET /api/bounties/:id/openapi.
 const publicView = (b: BountyRecord) => {
-  const { deliverableUrl: _u, leaseToken: _l, ...rest } = b;
+  const { deliverableUrl: _u, leaseToken: _l, openApiSpec: _s, ...rest } = b;
   return rest;
 };
 
@@ -110,6 +117,54 @@ app.get("/api/bounties/:id", async (c) => {
   return c.json(publicView(bounty));
 });
 
+// Fetch the buyer-attached OpenAPI contract for a bounty.
+// Dual auth: agent keys (x-agent-key, workers pre-flighting validate) and
+// human sessions of any role (buyer reviewing their own contract, developer
+// implementing it). 404 when the bounty carries no spec.
+app.get("/api/bounties/:id/openapi", async (c) => {
+  const id = c.req.param("id");
+  const bounty = await getBountyRecord(hubDb(c.env), id);
+  if (!bounty) return c.json({ error: "Bounty not found" }, 404);
+  if (!bounty.openApiSpec) return c.json({ error: "No OpenAPI spec attached to this bounty" }, 404);
+
+  // 1. Agent key path (MCP/CLI workers, no session cookie).
+  const provided = c.req.header("x-agent-key");
+  if (provided) {
+    const { validateAgentKey } = await import("./lib/agent-keys.ts");
+    let ok = false;
+    try {
+      ok = (await validateAgentKey(hubDb(c.env), provided)) !== null;
+    } catch {
+      ok = (await validateAgentKey(null, provided)) !== null;
+    }
+    if (!ok) {
+      const envMap = c.env as unknown as Record<string, string | undefined>;
+      if (!(envMap.AGENT_API_KEY && provided === envMap.AGENT_API_KEY)) {
+        return c.json({ error: "Invalid or revoked agent key" }, 401);
+      }
+    }
+  } else {
+    // 2. Human session path (any role).
+    const { createAuth } = await import("./lib/auth.ts");
+    const auth = createAuth(c.env, c.req.url);
+    const session = await auth.api.getSession({ headers: c.req.raw.headers });
+    if (!session?.user) return c.json({ error: "Authentication required" }, 401);
+  }
+
+  let spec: unknown;
+  try {
+    spec = JSON.parse(bounty.openApiSpec);
+  } catch {
+    return c.json({ error: "Stored spec is corrupt" }, 500);
+  }
+  return c.json({
+    bountyId: bounty.id,
+    hash: bounty.openApiSpecHash,
+    endpointCount: bounty.openApiEndpointCount,
+    spec,
+  });
+});
+
 // Post a new bounty with pre-authorized PayPal Escrow (buyers only)
 app.post("/api/bounties", requireAuth, requireRole("BUYER"), async (c) => {
   const parsed = createBountySchema.safeParse(await c.req.json().catch(() => ({})));
@@ -120,6 +175,25 @@ app.post("/api/bounties", requireAuth, requireRole("BUYER"), async (c) => {
   const requirements = clean(body.requirements);
   const acceptanceCriteria = clean(body.acceptanceCriteria);
   const referenceLinks = clean(body.referenceLinks);
+
+  // Buyer-attached OpenAPI contract: required for API/Backend, optional
+  // otherwise. Normalized to canonical JSON here; stored immutably — no
+  // update route mutates it, so claim-time contract == grading-time contract.
+  let openApiSpec: string | undefined;
+  let openApiSpecHash: string | undefined;
+  let openApiEndpointCount: number | undefined;
+  if (body.openApiSpec !== undefined) {
+    try {
+      const normalized = await validateAndNormalizeOpenApi(body.openApiSpec);
+      openApiSpec = normalized.specJson;
+      openApiSpecHash = normalized.hash;
+      openApiEndpointCount = normalized.endpointCount;
+    } catch (err) {
+      return c.json({ error: (err as Error).message }, 400);
+    }
+  } else if (body.category === "API / Backend") {
+    return c.json({ error: "API / Backend bounties require an OpenAPI 3.x spec (JSON)." }, 400);
+  }
   const problemStatement = body.problemStatement?.trim() || body.description?.trim() || "";
   const composed = [
     problemStatement,
@@ -139,6 +213,9 @@ app.post("/api/bounties", requireAuth, requireRole("BUYER"), async (c) => {
     techConstraints: body.techConstraints?.trim() || undefined,
     timeline: body.timeline?.trim() || undefined,
     referenceLinks: referenceLinks.length ? referenceLinks : undefined,
+    openApiSpec,
+    openApiSpecHash,
+    openApiEndpointCount,
     escrowAmount: body.escrowAmount,
     currency: "USD",
     status: "OPEN_FOR_CLAIM",

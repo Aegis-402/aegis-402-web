@@ -42,8 +42,38 @@ export function PostBountyModal({
   const [acceptanceCriteria, setAcceptanceCriteria] = useState<string[]>([""]);
   const [techConstraints, setTechConstraints] = useState("");
   const [timeline, setTimeline] = useState("");
+  const [openApiText, setOpenApiText] = useState("");
+  const [openApiFileName, setOpenApiFileName] = useState("");
 
   const busy = phase !== "form" && phase !== "approve";
+
+  /** Client-side mirror of the hub's spec validation (hub re-validates). */
+  const specErrorFor = (text: string): string | null => {
+    if (!text.trim()) return null;
+    let doc: any;
+    try {
+      doc = JSON.parse(text);
+    } catch {
+      return "Spec must be valid OpenAPI 3.x JSON.";
+    }
+    if (typeof doc.openapi !== "string" || !doc.openapi.startsWith("3.")) {
+      return 'Spec must declare openapi: "3.x".';
+    }
+    if (!doc.info || typeof doc.info.title !== "string" || !doc.info.title.trim()) {
+      return "Spec must include info.title.";
+    }
+    if (!doc.paths || typeof doc.paths !== "object" || Object.keys(doc.paths).length === 0) {
+      return "Spec must define at least one path.";
+    }
+    return null;
+  };
+
+  const handleSpecFile = async (f: File | undefined) => {
+    if (!f) return;
+    const text = await f.text();
+    setOpenApiText(text);
+    setOpenApiFileName(f.name);
+  };
 
   const setListItem = (
     setter: (v: string[]) => void,
@@ -97,6 +127,17 @@ export function PostBountyModal({
         toast.error("Deadline must be today or later.");
         return;
       }
+    }
+    // Buyer-attached OpenAPI contract: required for API/Backend (the arbiter
+    // grades the deliverable against this copy), optional otherwise.
+    const specErr = specErrorFor(openApiText);
+    if (category === "API / Backend" && !openApiText.trim()) {
+      toast.error("API / Backend bounties require an OpenAPI 3.x spec (JSON) — the arbiter probes the deliverable against it.");
+      return;
+    }
+    if (specErr) {
+      toast.error(specErr);
+      return;
     }
     if (!feeAck) {
       toast.error("Please acknowledge the 1% cancellation fee policy");
@@ -164,6 +205,7 @@ export function PostBountyModal({
           acceptanceCriteria: accept,
           techConstraints: techConstraints.trim() || undefined,
           timeline: timeline || undefined,
+          openApiSpec: openApiText.trim() || undefined,
         }),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -180,6 +222,8 @@ export function PostBountyModal({
       setAcceptanceCriteria([""]);
       setTechConstraints("");
       setTimeline("");
+      setOpenApiText("");
+      setOpenApiFileName("");
       setFeeAck(false);
       setPhase("form");
     } catch (err) {
@@ -482,6 +526,76 @@ export function PostBountyModal({
                   />
                 </div>
               </div>
+
+              {category === "API / Backend" ? (
+                <div>
+                  <Label className="mb-1.5">
+                    OpenAPI Contract <span className="text-rose-500">*</span>{" "}
+                    <span className="font-normal text-zinc-400">
+                      — the grading contract, frozen at claim
+                    </span>
+                  </Label>
+                  <textarea
+                    rows={6}
+                    value={openApiText}
+                    onChange={(e) => setOpenApiText(e.target.value)}
+                    placeholder='Paste OpenAPI 3.x JSON — e.g. {"openapi":"3.0.3","info":{"title":"...","version":"1.0.0"},"paths":{...}}'
+                    spellCheck={false}
+                    className="w-full px-3 py-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 text-xs font-mono focus:outline-none focus-visible:border-black dark:focus-visible:border-white focus-visible:ring-1 focus-visible:ring-black dark:focus-visible:ring-white placeholder:text-zinc-400"
+                  />
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-sm text-[#0070ba] hover:text-[#005ea6] cursor-pointer">
+                      <span>Load from .json file</span>
+                      <input
+                        type="file"
+                        accept=".json,application/json"
+                        className="hidden"
+                        onChange={(e) => void handleSpecFile(e.target.files?.[0])}
+                      />
+                    </label>
+                    {openApiFileName && (
+                      <span className="text-xs font-mono text-zinc-500">
+                        {openApiFileName}
+                      </span>
+                    )}
+                  </div>
+                  <p className="mt-1.5 text-xs text-zinc-500">
+                    The arbiter probes the deliverable against this spec
+                    (status, schema, fuzz, p95 latency). No spec in the
+                    deliverable tarball is read.
+                  </p>
+                </div>
+              ) : (
+                <details className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 px-3 py-2.5">
+                  <summary className="text-sm text-zinc-600 dark:text-zinc-400 cursor-pointer">
+                    Optional: attach an OpenAPI contract (API surface to verify)
+                  </summary>
+                  <textarea
+                    rows={6}
+                    value={openApiText}
+                    onChange={(e) => setOpenApiText(e.target.value)}
+                    placeholder='Paste OpenAPI 3.x JSON — e.g. {"openapi":"3.0.3","info":{"title":"...","version":"1.0.0"},"paths":{...}}'
+                    spellCheck={false}
+                    className="mt-2 w-full px-3 py-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#09090b] text-xs font-mono focus:outline-none focus-visible:border-black dark:focus-visible:border-white placeholder:text-zinc-400"
+                  />
+                  <div className="mt-2 flex items-center gap-2">
+                    <label className="text-sm text-[#0070ba] hover:text-[#005ea6] cursor-pointer">
+                      <span>Load from .json file</span>
+                      <input
+                        type="file"
+                        accept=".json,application/json"
+                        className="hidden"
+                        onChange={(e) => void handleSpecFile(e.target.files?.[0])}
+                      />
+                    </label>
+                    {openApiFileName && (
+                      <span className="text-xs font-mono text-zinc-500">
+                        {openApiFileName}
+                      </span>
+                    )}
+                  </div>
+                </details>
+              )}
 
               {/* Powered by PayPal */}
               <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">

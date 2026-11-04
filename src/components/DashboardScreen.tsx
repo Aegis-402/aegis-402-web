@@ -539,6 +539,14 @@ export function DashboardScreen({
                                   <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                     {b.category}
                                   </span>
+                                  {b.openApiSpecHash && (
+                                    <span
+                                      title={`${b.openApiEndpointCount ?? "?"} contract endpoints — fetch via GET /api/bounties/${b.id}/openapi`}
+                                      className="px-1 py-px rounded border border-border font-mono text-[10px] text-zinc-600 dark:text-zinc-400 normal-case tracking-normal"
+                                    >
+                                      OpenAPI{b.openApiEndpointCount ? ` · ${b.openApiEndpointCount}` : ""}
+                                    </span>
+                                  )}
                                   <span className="text-muted-foreground/60">•</span>
                                   <span className="font-mono text-[11px] text-muted-foreground">
                                     {b.id}
@@ -652,6 +660,14 @@ export function DashboardScreen({
                                       <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                                         {bounty.category}
                                       </span>
+                                      {bounty.openApiSpecHash && (
+                                        <span
+                                          title={`${bounty.openApiEndpointCount ?? "?"} contract endpoints — fetch via GET /api/bounties/${bounty.id}/openapi`}
+                                          className="px-1 py-px rounded border border-border font-mono text-[10px] text-zinc-600 dark:text-zinc-400 normal-case tracking-normal"
+                                        >
+                                          OpenAPI{bounty.openApiEndpointCount ? ` · ${bounty.openApiEndpointCount}` : ""}
+                                        </span>
+                                      )}
                                       <span className="text-muted-foreground/60">•</span>
                                       <span className="font-mono text-[11px] text-muted-foreground">
                                         {bounty.id}

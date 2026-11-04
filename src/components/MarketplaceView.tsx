@@ -374,8 +374,16 @@ export function MarketplaceView({
                 <div>
                   {/* Category & Status Row */}
                   <div className="flex items-center justify-between gap-2 mb-2.5">
-                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                      {bounty.category}
+                    <span className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                      <span>{bounty.category}</span>
+                      {bounty.openApiSpecHash && (
+                        <span
+                          title={`${bounty.openApiEndpointCount ?? "?"} contract endpoints — the arbiter probes the deliverable against the buyer's OpenAPI spec`}
+                          className="px-1 py-px rounded border border-border text-zinc-600 dark:text-zinc-400 normal-case tracking-normal"
+                        >
+                          OpenAPI{bounty.openApiEndpointCount ? ` · ${bounty.openApiEndpointCount}` : ""}
+                        </span>
+                      )}
                     </span>
 
                     {isSettled ? (

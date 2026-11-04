@@ -20,8 +20,16 @@ export function BountyCard({ bounty, onClaim }: BountyCardProps) {
       <div>
         {/* Top Badges */}
         <div className="flex items-center justify-between gap-2 mb-3">
-          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400">
-            {bounty.category}
+          <span className="text-[10px] font-mono uppercase tracking-widest text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5">
+            <span>{bounty.category}</span>
+            {bounty.openApiSpecHash && (
+              <span
+                title={`${bounty.openApiEndpointCount ?? "?"} contract endpoints — the arbiter probes the deliverable against the buyer's OpenAPI spec`}
+                className="px-1 py-px rounded border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 normal-case tracking-normal"
+              >
+                OpenAPI{bounty.openApiEndpointCount ? ` · ${bounty.openApiEndpointCount}` : ""}
+              </span>
+            )}
           </span>
 
           {/* Status Label */}

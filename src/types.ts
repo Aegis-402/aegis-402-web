@@ -82,4 +82,7 @@ export interface Bounty {
   techConstraints?: string;
   timeline?: string;
   referenceLinks?: string[];
+  /** Buyer-attached OpenAPI contract metadata (blob stripped from views). */
+  openApiSpecHash?: string;
+  openApiEndpointCount?: number;
 }
