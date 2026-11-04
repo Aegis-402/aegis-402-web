@@ -483,9 +483,7 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
             "kpi-locked": {
               type: "value",
               dataMapping: {
-                value: [
-                  { id: "escrow-open.escrowAmount", aggregation: "sum" },
-                ],
+                value: [{ id: "escrow-open.escrowAmount", aggregation: "sum" }],
               },
               format: { caption: { enabled: true, text: "Locked escrow" } },
             },
@@ -498,44 +496,44 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
               },
               format: { caption: { enabled: true, text: "Developer payouts" } },
             },
-              grid: {
-                type: "grid",
-                dataMapping: {
-                  cols: [
-                    { id: "escrow-open.ref" },
-                    { id: "escrow-open.title" },
-                    { id: "escrow-open.status" },
-                    { id: "escrow-open.escrowAmount" },
-                    { id: "escrow-open.payoutStatus" },
-                  ],
-                },
-                format: { title: { enabled: true, text: "Open escrow" } },
+            grid: {
+              type: "grid",
+              dataMapping: {
+                cols: [
+                  { id: "escrow-open.ref" },
+                  { id: "escrow-open.title" },
+                  { id: "escrow-open.status" },
+                  { id: "escrow-open.escrowAmount" },
+                  { id: "escrow-open.payoutStatus" },
+                ],
               },
-              chart: {
-                type: "column-chart-grouped",
-                dataMapping: {
-                  categoryKey: [{ id: "escrow-open.status" }],
-                  valueKey: [
-                    { id: "escrow-open.escrowAmount", aggregation: "sum" },
-                  ],
-                },
-                format: {
-                  title: { enabled: true, text: "Open escrow by status" },
-                },
+              format: { title: { enabled: true, text: "Open escrow" } },
+            },
+            chart: {
+              type: "column-chart-grouped",
+              dataMapping: {
+                categoryKey: [{ id: "escrow-open.status" }],
+                valueKey: [
+                  { id: "escrow-open.escrowAmount", aggregation: "sum" },
+                ],
+              },
+              format: {
+                title: { enabled: true, text: "Open escrow by status" },
               },
             },
-            widgetLayout: {
-              "kpi-locked": { xTrack: 0, yTrack: 0, xSpan: 12, ySpan: 8 },
-              "kpi-paid": { xTrack: 12, yTrack: 0, xSpan: 12, ySpan: 8 },
-              chart: { xTrack: 0, yTrack: 8, xSpan: 24, ySpan: 14 },
-              grid: { xTrack: 0, yTrack: 22, xSpan: 24, ySpan: 20 },
-            },
-            selection: { type: "widget", id: "grid" },
           },
-        ],
-        selectedPageId: "overview",
-        panels: { filters: { collapsed: false }, data: { collapsed: true } },
-      }),
+          widgetLayout: {
+            "kpi-locked": { xTrack: 0, yTrack: 0, xSpan: 12, ySpan: 8 },
+            "kpi-paid": { xTrack: 12, yTrack: 0, xSpan: 12, ySpan: 8 },
+            chart: { xTrack: 0, yTrack: 8, xSpan: 24, ySpan: 14 },
+            grid: { xTrack: 0, yTrack: 22, xSpan: 24, ySpan: 20 },
+          },
+          selection: { type: "widget", id: "grid" },
+        },
+      ],
+      selectedPageId: "overview",
+      panels: { filters: { collapsed: false }, data: { collapsed: true } },
+    }),
     []
   );
 
@@ -581,7 +579,7 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
       </div>
       <Card className="overflow-hidden p-0">
         <div
-          className="ag-theme-mode h-[calc(100vh-280px)] min-h-[560px] w-full"
+          className="ag-theme-mode h-[calc(100vh-280px)] min-h-140 w-full"
           data-ag-theme-mode={theme}
         >
           <AgStudioProvider licenseKey={LICENSE_KEY} modules={STUDIO_MODULES}>

@@ -343,7 +343,7 @@ app.get("/api/bounties/:id/artifact/download", requireAuth, requireRole("BUYER")
     return c.json({ error: "Only the buyer who funded this bounty can download its code" }, 403);
   }
   if (bounty.status !== "SETTLED") {
-    return c.json({ error: "Code releases only after PayPal capture — source stays sealed until you pay" }, 409);
+    return c.json({ error: "Code releases only after PayPal capture — source stays sealed until you pay" }, 402);
   }
   if (!bounty.artifactSha256) return c.json({ error: "No code artifact for this bounty" }, 404);
   const envMap = c.env as unknown as Record<string, string | undefined>;

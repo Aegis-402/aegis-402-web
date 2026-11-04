@@ -13,6 +13,7 @@ import {
   Settings,
   User,
   Download,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -172,10 +173,19 @@ export function DashboardScreen({
   onOpenPostBounty,
 }: DashboardScreenProps) {
   const isBuyer = user?.role === "BUYER";
-  // Default tab based on role (Buyers to Approvals, Developers to Marketplace)
-  const [activeTab, setActiveTab] = useState<string>(() =>
-    isBuyer ? "approvals" : "marketplace"
-  );
+  // Default tab based on role (Buyers to Approvals, Developers to Marketplace),
+  // unless a ?tab= deep link (e.g. landing "See more") names a valid tab.
+  const VALID_TABS = new Set([
+    "marketplace", "bounties",
+    "approvals", "review-queue",
+    "downloads", "escrow", "timeline", "audit",
+    "deliverables", "agents", "fleet",
+  ]);
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    const q = new URLSearchParams(window.location.search).get("tab");
+    if (q && VALID_TABS.has(q)) return q;
+    return isBuyer ? "approvals" : "marketplace";
+  });
 
   // Registered agents — server-issued per-agent keys (GET /api/agents).
   // Plaintext keys are returned ONCE at mint time and kept only in memory.
@@ -273,9 +283,20 @@ export function DashboardScreen({
   const [revealedKeyIds, setRevealedKeyIds] = useState<Record<string, boolean>>(
     {}
   );
-  const [selectedConfigClient, setSelectedConfigClient] =
-    useState<ConfigClient>("claude");
+  const [clientByAgent, setClientByAgent] = useState<Record<string, ConfigClient>>({});
+  const clientFor = (agentId: string): ConfigClient =>
+    clientByAgent[agentId] ?? "claude";
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
+  const [promptAgentId, setPromptAgentId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!promptAgentId) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPromptAgentId(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [promptAgentId]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
 
@@ -383,21 +404,20 @@ export function DashboardScreen({
     setTimeout(() => setCopiedKeyId(null), 2000);
   };
 
-  const handleCopyCmd = (agentId: string, key: string) => {
-    const cmd = `npm install -g ./aegis-402-mcp && AEGIS_HUB_URL=${window.location.origin} aegis-mcp`;
-    void key; void agentId;
-    navigator.clipboard.writeText(cmd);
+  const handleCopyCmd = (agentId: string) => {
+    // Copy exactly what the bar displays — no injected env vars.
+    navigator.clipboard.writeText("npm install -g ./aegis-402-mcp && aegis-mcp");
     setCopiedCmdId(agentId);
     toast.success("Terminal launch command copied to clipboard");
     setTimeout(() => setCopiedCmdId(null), 2000);
   };
 
-  const handleCopyConfigSnippet = (key: string) => {
-    const snippet = configSnippetFor(selectedConfigClient, key);
+  const handleCopyConfigSnippet = (agentId: string, client: ConfigClient, key: string) => {
+    const snippet = configSnippetFor(client, key);
     navigator.clipboard.writeText(snippet);
-    setCopiedConfigId(key);
+    setCopiedConfigId(agentId);
     toast.success(
-      `${CONFIG_CLIENT_LABEL[selectedConfigClient]} MCP configuration copied`
+      `${CONFIG_CLIENT_LABEL[client]} MCP configuration copied`
     );
     setTimeout(() => setCopiedConfigId(null), 2000);
   };
@@ -853,23 +873,14 @@ export function DashboardScreen({
                         onSubmit={handleCreateNewAgent}
                         className="p-5 rounded-md border border-border bg-muted/30 space-y-4 font-mono text-sm"
                       >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-foreground flex items-center gap-2">
-                            <Bot className="size-4" />
-                            <span>Register Agent</span>
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => setIsRegisteringAgent(false)}
-                            className="text-muted-foreground hover:text-foreground cursor-pointer"
-                          >
-                            Cancel
-                          </button>
+                        <div className="flex items-center gap-2">
+                          <Bot className="size-4" />
+                          <span className="font-medium text-foreground">Register Agent</span>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                           <div className="sm:col-span-2">
-                            <label className="block text-[10px] uppercase text-muted-foreground mb-1">
+                            <label className="block text-[10px] uppercase text-zinc-600 dark:text-zinc-400 mb-1">
                               Agent Name
                             </label>
                             <Input
@@ -881,7 +892,7 @@ export function DashboardScreen({
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] uppercase text-muted-foreground mb-1">
+                            <label className="block text-[10px] uppercase text-zinc-600 dark:text-zinc-400 mb-1">
                               Client
                             </label>
                             <Select
@@ -947,7 +958,7 @@ export function DashboardScreen({
                         const isKeyCopied = copiedKeyId === agent.id;
                         const isCmdCopied = copiedCmdId === agent.id;
                         const shownKey = displayKeyFor(agent);
-                        const isConfigCopied = copiedConfigId === shownKey;
+                        const isConfigCopied = copiedConfigId === agent.id;
 
                         return (
                           <Card key={agent.id} className="p-5 space-y-4">
@@ -964,9 +975,8 @@ export function DashboardScreen({
                                       {agent.framework}
                                     </Badge>
                                   </div>
-                                  <div className="text-[11px] font-mono text-muted-foreground">
-                                    Registered {agent.createdAt} • Stdio MCP
-                                    connected
+                                  <div className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
+                                    Registered {agent.createdAt} • MCP connected
                                   </div>
                                 </div>
                               </div>
@@ -996,7 +1006,7 @@ export function DashboardScreen({
                                     <Copy className="size-3.5" />
                                   )}
                                 </button>
-                                <code className="text-muted-foreground bg-muted px-2 py-1 rounded border border-border">
+                                <code className="font-mono text-sm text-zinc-700 dark:text-zinc-300">
                                   {isRevealed
                                     ? shownKey
                                     : `${shownKey.substring(0, 12)}••••••••`}
@@ -1013,13 +1023,13 @@ export function DashboardScreen({
                             </div>
 
                             <div>
-                              <div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5 flex items-center justify-between">
+                              <div className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400 mb-1.5 flex items-center justify-between">
                                 <span>Terminal Launch Command</span>
                                 <button
                                   onClick={() =>
-                                    handleCopyCmd(agent.id, shownKey)
+                                    handleCopyCmd(agent.id)
                                   }
-                                  className="text-[11px] font-mono text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+                                  className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
                                 >
                                   {isCmdCopied ? (
                                     <>
@@ -1036,16 +1046,12 @@ export function DashboardScreen({
                                   )}
                                 </button>
                               </div>
-                              <div
-                                onClick={() =>
-                                  handleCopyCmd(agent.id, shownKey)
-                                }
-                                className="p-2.5 rounded bg-muted/40 border border-border font-mono text-sm text-foreground flex items-center justify-between cursor-pointer"
+                              <div className="p-2.5 rounded bg-muted/40 border border-border font-mono text-sm text-zinc-800 dark:text-zinc-200 flex items-center justify-between"
                               >
                                 <div className="flex items-center gap-2 overflow-x-auto">
-                                  <Terminal className="size-3.5 text-muted-foreground shrink-0" />
+                                  <Terminal className="size-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
                                   <code>
-                                    $ npm install -g ./aegis-402-mcp && aegis-mcp
+                                    npm install -g ./aegis-402-mcp && aegis-mcp
                                   </code>
                                 </div>
                               </div>
@@ -1054,7 +1060,7 @@ export function DashboardScreen({
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                                  <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                                     IDE Integration Config
                                   </span>
                                   <div className="inline-flex rounded border border-border bg-muted/60 p-0.5">
@@ -1064,12 +1070,12 @@ export function DashboardScreen({
                                       <button
                                         key={client}
                                         onClick={() =>
-                                          setSelectedConfigClient(client)
+                                          setClientByAgent((prev) => ({ ...prev, [agent.id]: client }))
                                         }
                                         className={`px-1.5 py-0.5 text-[10px] font-mono rounded cursor-pointer capitalize ${
-                                          selectedConfigClient === client
+                                          clientFor(agent.id) === client
                                             ? "bg-background text-foreground"
-                                            : "text-muted-foreground"
+                                            : "text-zinc-500 dark:text-zinc-400"
                                         }`}
                                       >
                                         {CONFIG_CLIENT_LABEL[client]}
@@ -1079,9 +1085,9 @@ export function DashboardScreen({
                                 </div>
                                 <button
                                   onClick={() =>
-                                    handleCopyConfigSnippet(shownKey)
+                                    handleCopyConfigSnippet(agent.id, clientFor(agent.id), shownKey)
                                   }
-                                  className="text-[11px] font-mono text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
+                                  className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
                                 >
                                   {isConfigCopied ? (
                                     <>
@@ -1098,40 +1104,50 @@ export function DashboardScreen({
                                   )}
                                 </button>
                               </div>
-                              <pre className="p-3 rounded bg-muted/40 border border-border font-mono text-[11px] text-muted-foreground overflow-x-auto leading-relaxed whitespace-pre-wrap">
-                                {configSnippetFor(selectedConfigClient, shownKey)}
+                              <pre className="p-3 rounded bg-muted/40 border border-border font-mono text-[11px] text-zinc-800 dark:text-zinc-200 overflow-x-auto leading-relaxed whitespace-pre-wrap">
+                                {configSnippetFor(clientFor(agent.id), shownKey)}
                               </pre>
                             </div>
 
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
-                                <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
+                                <span className="text-[10px] font-mono uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
                                   Worker Bootstrap Prompt
                                 </span>
-                                <button
-                                  onClick={() =>
-                                    handleCopyBootstrapPrompt(agent.id, agent.name, shownKey)
-                                  }
-                                  className="text-[11px] font-mono text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1"
-                                >
-                                  {copiedPromptId === agent.id ? (
-                                    <>
-                                      <Check className="size-3 text-emerald-500" />
-                                      <span className="text-emerald-500">
-                                        Copied
-                                      </span>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Copy className="size-3" />
-                                      <span>Copy Prompt</span>
-                                    </>
-                                  )}
-                                </button>
+                                <div className="flex items-center gap-2">
+                                  <button
+                                    onClick={() => setPromptAgentId(agent.id)}
+                                    className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
+                                  >
+                                    <Eye className="size-3" />
+                                    <span>View</span>
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleCopyBootstrapPrompt(agent.id, agent.name, shownKey)
+                                    }
+                                    className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
+                                  >
+                                    {copiedPromptId === agent.id ? (
+                                      <>
+                                        <Check className="size-3 text-emerald-500" />
+                                        <span className="text-emerald-500">
+                                          Copied
+                                        </span>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Copy className="size-3" />
+                                        <span>Copy Prompt</span>
+                                      </>
+                                    )}
+                                  </button>
+                                </div>
                               </div>
-                              <pre className="p-3 rounded bg-muted/40 border border-border font-mono text-[11px] text-muted-foreground overflow-x-auto leading-relaxed whitespace-pre-wrap">
-                                {bootstrapPromptFor(agent.name, shownKey, window.location.origin)}
-                              </pre>
+                              <p className="text-[11px] font-mono text-zinc-600 dark:text-zinc-400">
+                                Paste it into any model to self-configure as a
+                                worker for {agent.name}.
+                              </p>
                             </div>
                           </Card>
                         );
@@ -1140,6 +1156,63 @@ export function DashboardScreen({
                     </div>
                   </div>
                 )}
+
+                {/* Bootstrap prompt popup */}
+                {(() => {
+                  const promptAgent = agents.find((a) => a.id === promptAgentId);
+                  if (!promptAgent) return null;
+                  const promptKey = displayKeyFor(promptAgent);
+                  return (
+                    <div
+                      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                      role="dialog"
+                      aria-modal="true"
+                      aria-label="Worker bootstrap prompt"
+                    >
+                      <div
+                        className="absolute inset-0 bg-zinc-950/80 backdrop-blur-md"
+                        onClick={() => setPromptAgentId(null)}
+                      />
+                      <div className="relative w-full max-w-2xl max-h-[85vh] flex flex-col rounded-md bg-white dark:bg-[#09090b] border border-zinc-200 dark:border-zinc-800 shadow-2xl">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800">
+                          <span className="text-sm font-medium text-zinc-950 dark:text-white">
+                            Bootstrap prompt — {promptAgent.name}
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() =>
+                                handleCopyBootstrapPrompt(promptAgent.id, promptAgent.name, promptKey)
+                              }
+                              className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
+                            >
+                              {copiedPromptId === promptAgent.id ? (
+                                <>
+                                  <Check className="size-3 text-emerald-500" />
+                                  <span className="text-emerald-500">Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Copy className="size-3" />
+                                  <span>Copy Prompt</span>
+                                </>
+                              )}
+                            </button>
+                            <button
+                              onClick={() => setPromptAgentId(null)}
+                              className="p-1.5 text-zinc-500 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                              aria-label="Close prompt"
+                            >
+                              <X className="size-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <pre className="p-4 overflow-y-auto font-mono text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
+                          {bootstrapPromptFor(promptAgent.name, promptKey, window.location.origin)}
+                        </pre>
+                      </div>
+                    </div>
+                  );
+                })()}
 
                 {/* VIEW: Escrow Audit (AG Studio) */}
                 {activeTab === "audit" && <AuditScreen bounties={bounties} theme={theme} />}
@@ -1314,7 +1387,7 @@ export function DashboardScreen({
                             <div className="font-medium text-foreground">
                               Theme Appearance
                             </div>
-                            <div className="text-[11px] text-muted-foreground">
+                            <div className="text-[11px] text-zinc-600 dark:text-zinc-400">
                               Switch between Light and Dark monochrome UI.
                             </div>
                           </div>
@@ -1325,32 +1398,6 @@ export function DashboardScreen({
                           >
                             {theme === "dark" ? "Dark Mode" : "Light Mode"}
                           </Button>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-md border border-border bg-muted/20">
-                          <div>
-                            <div className="font-medium text-foreground">
-                              PayPal Webhooks
-                            </div>
-                            <div className="text-[11px] text-muted-foreground">
-                              Receive real-time order authorization and
-                              settlement callbacks.
-                            </div>
-                          </div>
-                          <Badge variant="emerald">Connected</Badge>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-md border border-border bg-muted/20">
-                          <div>
-                            <div className="font-medium text-foreground">
-                              Playwright CDP Viewport
-                            </div>
-                            <div className="text-[11px] text-muted-foreground">
-                              Binary WebP streaming at 1280x720 canvas
-                              resolution.
-                            </div>
-                          </div>
-                          <Badge variant="outline">60 FPS Native</Badge>
                         </div>
                       </div>
                     </Card>
@@ -1374,7 +1421,7 @@ export function DashboardScreen({
 
                       <div className="space-y-3 max-w-xl">
                         <div className="p-3 rounded-md border border-border bg-muted/20 space-y-1">
-                          <div className="text-[10px] uppercase text-muted-foreground">
+                          <div className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400">
                             Account Email
                           </div>
                           <div className="font-medium text-foreground text-sm">
@@ -1383,7 +1430,7 @@ export function DashboardScreen({
                         </div>
 
                         <div className="p-3 rounded-md border border-border bg-muted/20 space-y-1">
-                          <div className="text-[10px] uppercase text-muted-foreground">
+                          <div className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400">
                             Account Role
                           </div>
                           <div className="flex items-center gap-2">
@@ -1397,25 +1444,25 @@ export function DashboardScreen({
                         </div>
 
                         <div className="p-3 rounded-md border border-border bg-muted/20 space-y-1">
-                          <div className="text-[10px] uppercase text-muted-foreground">
+                          <div className="text-[10px] uppercase text-zinc-600 dark:text-zinc-400">
                             PayPal Payout Address
                           </div>
                           <div className="font-medium text-foreground">
                             {user.paypalEmail || user.email}
                           </div>
-                          <div className="text-[11px] text-muted-foreground">
+                          <div className="text-[11px] text-zinc-600 dark:text-zinc-400">
                             Direct disbursements for completed and verified
-                            bounties.
+                            bounties. Locked to the address set at signup.
                           </div>
                         </div>
 
                         <div className="pt-2">
                           <Button
-                            variant="destructive"
+                            variant="outline"
                             size="sm"
                             onClick={onSignOut}
                           >
-                            Sign Out of Account
+                            Sign Out
                           </Button>
                         </div>
                       </div>

@@ -24,7 +24,7 @@ export function EscrowLifecycle() {
       num: "03",
       tag: "ATOMIC SETTLEMENT",
       title: "Conditional PayPal CAPTURE",
-      desc: "If verification assertions pass (or buyer approves), Aegis invokes PayPal Capture. Payment releases immediately and the decryption key unseals.",
+      desc: "If verification assertions pass (or buyer approves), Aegis invokes PayPal Capture. Payment releases immediately and the signed vault download unlocks.",
       detail: "POST /v2/payments/authorizations/{id}/capture",
       badge: "Instant Worker Payout",
       icon: CheckCircle2,

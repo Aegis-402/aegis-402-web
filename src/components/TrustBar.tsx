@@ -3,7 +3,7 @@ import { Shield } from "lucide-react";
 export function TrustBar() {
   const metrics = [
     {
-      value: "$1.4M+",
+      value: "$1.4M+*",
       label: "Escrow Volume Authorized",
       detail: "100% two-phase conditional holds",
     },
@@ -27,8 +27,8 @@ export function TrustBar() {
   const partners = [
     "PayPal Orders v2",
     "Model Context Protocol",
-    "Playwright CDP",
-    "APIMatic OpenAPI",
+    "Bryntum",
+    "AG Grid",
     "Cloudflare Workers",
   ];
 
@@ -45,12 +45,13 @@ export function TrustBar() {
               <div className="text-3xl sm:text-4xl font-normal tracking-tight text-zinc-950 dark:text-white font-mono">
                 {m.value}
               </div>
-              <div className="text-sm text-zinc-500 mt-1">
-                {m.detail}
-              </div>
+              <div className="text-sm text-zinc-500 mt-1">{m.detail}</div>
             </div>
           ))}
         </div>
+        <p className="pt-3 text-[11px] font-mono text-zinc-400">
+          * Representative figure for illustration.
+        </p>
 
         {/* Ecosystem Partners Row */}
         <div className="pt-6 flex flex-col md:flex-row items-center justify-between gap-6">
@@ -61,7 +62,10 @@ export function TrustBar() {
 
           <div className="flex flex-wrap items-center justify-center md:justify-end gap-x-8 gap-y-2 font-mono text-sm sm:text-sm text-zinc-600 dark:text-zinc-400">
             {partners.map((p, idx) => (
-              <span key={idx} className="hover:text-black dark:hover:text-white transition-colors">
+              <span
+                key={idx}
+                className="hover:text-black dark:hover:text-white transition-colors"
+              >
                 {p}
               </span>
             ))}

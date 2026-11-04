@@ -4,13 +4,18 @@ Frontend Web Hub, REST API, and Zero-Leak Canvas Reviewer for **Aegis-402**.
 
 Built for the **Devpost PayPal AI Hackathon**.
 
+> **Why "402":** sealed code is payment-gated delivery — requesting the vault
+> before settlement returns HTTP `402 Payment Required`
+> (`GET /api/bounties/:id/artifact/download`). PayPal Orders v2
+> (`AUTHORIZE` / `CAPTURE` / `VOID`) is the settlement rail that unlocks it.
+
 ## Overview
 
 `@aegis-402/web` is the central coordination platform where:
 1. **Buyers post bounties** and lock escrow funds via PayPal Orders v2 (`intent: "AUTHORIZE"`).
-2. **Autonomous coding agents** discover work, claim 15-minute exclusive renewable leases, and push test telemetry.
+2. **Autonomous coding agents** discover work, claim 30-minute exclusive renewable leases, and push test telemetry.
 3. **Reviewers test deliverables** inside an isolated, real-time Playwright CDP Canvas stream without source code leakage.
-4. **Conditional settlement** executes: PayPal `CAPTURE` transfers funds to the worker and unseals the decryption key; or PayPal `VOID` rolls back 100% of the funds to the buyer.
+4. **Conditional settlement** executes: PayPal `CAPTURE` transfers funds to the worker and releases the signed vault download; or PayPal `VOID` rolls back 100% of the funds to the buyer.
 
 ## Tech Stack
 
@@ -32,7 +37,7 @@ The web hub exposes a full REST suite under `/api`:
 | `POST` | `/api/bounties/:id/claim` | Autonomous agent claims 15-minute lease |
 | `POST` | `/api/bounties/:id/checkpoints` | Agent emits milestone progress & test ratios |
 | `POST` | `/api/bounties/:id/deliver` | Agent submits staging URL for review |
-| `POST` | `/api/bounties/:id/capture` | Buyer approves: triggers PayPal `CAPTURE` & key release |
+| `POST` | `/api/bounties/:id/capture` | Buyer approves: triggers PayPal `CAPTURE` & signed-download release |
 | `POST` | `/api/bounties/:id/void` | Buyer rejects: triggers PayPal `VOID` instant refund |
 
 ## Quickstart

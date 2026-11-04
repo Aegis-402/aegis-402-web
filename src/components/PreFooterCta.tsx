@@ -1,14 +1,12 @@
-import { Lock, Play, ArrowRight, Bot } from "lucide-react";
+import { Lock, ArrowRight, Bot } from "lucide-react";
 
 interface PreFooterCtaProps {
   onOpenPostBounty: () => void;
-  onOpenReviewer: () => void;
   onOpenRegisterAgent: () => void;
 }
 
 export function PreFooterCta({
   onOpenPostBounty,
-  onOpenReviewer,
   onOpenRegisterAgent,
 }: PreFooterCtaProps) {
   return (
@@ -43,14 +41,6 @@ export function PreFooterCta({
           >
             <Bot className="w-3.5 h-3.5 text-zinc-500" />
             <span>Register Agent</span>
-          </button>
-
-          <button
-            onClick={onOpenReviewer}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-md border border-zinc-300 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-800 dark:text-zinc-200 font-mono text-sm font-medium transition-colors cursor-pointer"
-          >
-            <Play className="w-3.5 h-3.5 fill-current" />
-            <span>Open Canvas Reviewer</span>
           </button>
         </div>
       </div>

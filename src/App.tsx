@@ -14,7 +14,7 @@ import { AuthScreen, type UserSession } from "./components/AuthScreen";
 import { authClient } from "./lib/auth-client";
 import { DashboardScreen } from "./components/DashboardScreen";
 import { Toaster, toast } from "sonner";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, ArrowRight } from "lucide-react";
 import { PayPalProvider } from "@paypal/react-paypal-js/sdk-v6";
 import type { Bounty } from "./types";
 export type { Bounty };
@@ -73,14 +73,14 @@ export function App() {
     });
   }, [authSession, isSessionPending]);
 
-  const navigateTo = (screen: "landing" | "auth" | "dashboard") => {
+  const navigateTo = (screen: "landing" | "auth" | "dashboard", search = "") => {
     const pathMap: Record<"landing" | "auth" | "dashboard", string> = {
       landing: "/",
       auth: "/auth",
       dashboard: "/dashboard",
     };
-    const targetPath = pathMap[screen];
-    if (typeof window !== "undefined" && window.location.pathname !== targetPath) {
+    const targetPath = pathMap[screen] + search;
+    if (typeof window !== "undefined" && window.location.pathname + window.location.search !== targetPath) {
       window.history.pushState({ screen }, "", targetPath);
     }
     setCurrentScreen(screen);
@@ -160,7 +160,6 @@ export function App() {
 
   const filterCounts = {
     ALL: bounties.length,
-    READY_FOR_REVIEW: bounties.filter((b) => b.status === "READY_FOR_REVIEW").length,
     IN_PROGRESS: bounties.filter((b) => b.status === "IN_PROGRESS").length,
     OPEN_FOR_CLAIM: bounties.filter((b) => b.status === "OPEN_FOR_CLAIM").length,
     SETTLED: bounties.filter((b) => b.status === "SETTLED").length,
@@ -168,7 +167,6 @@ export function App() {
 
   const filteredBounties = bounties.filter((b) => {
     if (activeFilter === "ALL") return true;
-    if (activeFilter === "READY_FOR_REVIEW") return b.status === "READY_FOR_REVIEW";
     if (activeFilter === "OPEN_FOR_CLAIM") return b.status === "OPEN_FOR_CLAIM";
     if (activeFilter === "IN_PROGRESS") return b.status === "IN_PROGRESS";
     if (activeFilter === "SETTLED") return b.status === "SETTLED";
@@ -331,7 +329,6 @@ export function App() {
         {/* Section 1: Hero Section (Headline + Centerpiece Zero-Leak Canvas Window) */}
         <HeroSection
           theme={theme}
-          onOpenReviewer={() => handleOpenReviewer()}
           onOpenPostBounty={handleOpenPostBounty}
           onOpenRegisterAgent={handleOpenRegisterAgent}
         />
@@ -339,8 +336,8 @@ export function App() {
         {/* Section 2: Trust & Metrics (Clean 1-line counters) */}
         <TrustBar />
 
-        {/* Section 3: Architecture & 4 Pillars (Zero-Leak CDP, PayPal Escrow, Autonomous MCP, AES-256) */}
-        <FeatureSplitSection onOpenReviewer={() => handleOpenReviewer()} />
+        {/* Section 3: Architecture (Zero-Leak Referee, PayPal Escrow, Autonomous MCP, Atomic Settlement) */}
+        <FeatureSplitSection />
 
         {/* Section 4: Protocol & Code Explorer (Mintlify-style Split-Screen Code & Attestation Manifest) */}
         <MidnightMcpSection />
@@ -368,7 +365,6 @@ export function App() {
             <div className="flex flex-wrap items-center gap-1 p-1 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-sm font-mono">
               {[
                 { id: "ALL", label: "All" },
-                { id: "READY_FOR_REVIEW", label: "Ready to Review" },
                 { id: "IN_PROGRESS", label: "In Progress" },
                 { id: "OPEN_FOR_CLAIM", label: "Open Claims" },
                 { id: "SETTLED", label: "Settled" },
@@ -392,21 +388,34 @@ export function App() {
             </div>
           </div>
 
-          {/* Bounty Grid or Empty State */}
+          {/* Bounty Grid (max 3) or Empty State */}
           {filteredBounties.length > 0 ? (
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredBounties.map((b) => (
-                <BountyCard
-                  key={b.id}
-                  bounty={b}
-                  onInspect={(target) => {
-                    setSelectedBounty(target);
-                    setIsReviewerOpen(true);
-                  }}
-                  onClaim={handleClaimBounty}
-                />
-              ))}
-            </div>
+            <>
+              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+                {filteredBounties.slice(0, 3).map((b) => (
+                  <BountyCard
+                    key={b.id}
+                    bounty={b}
+                    onClaim={handleClaimBounty}
+                  />
+                ))}
+              </div>
+              {filteredBounties.length > 3 && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() =>
+                      currentUser
+                        ? navigateTo("dashboard", "?tab=marketplace")
+                        : navigateTo("auth")
+                    }
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 text-sm font-mono text-zinc-600 dark:text-zinc-400 hover:text-black dark:hover:text-white transition-colors cursor-pointer"
+                  >
+                    <span>See more bounties</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="rounded-md border border-dashed border-zinc-200 dark:border-zinc-800 p-12 text-center">
               <AlertCircle className="w-6 h-6 text-zinc-400 mx-auto mb-2" />
@@ -418,22 +427,12 @@ export function App() {
         {/* Section 7: Quickstart Pre-Footer CTA */}
         <PreFooterCta
           onOpenPostBounty={handleOpenPostBounty}
-          onOpenReviewer={() => handleOpenReviewer()}
           onOpenRegisterAgent={handleOpenRegisterAgent}
         />
       </main>
 
       {/* Section 8: Minimalist Footer */}
       <Footer />
-
-      {/* Interactive Zero-Leak Canvas Reviewer Modal */}
-      <ZeroLeakCanvasModal
-        bounty={selectedBounty}
-        isOpen={isReviewerOpen}
-        onClose={() => setIsReviewerOpen(false)}
-        onSettled={handleBountySettled}
-        onRefunded={handleBountyRefunded}
-      />
 
       {/* Post Bounty (PayPal Escrow Authorization) Modal */}
       <PostBountyModal

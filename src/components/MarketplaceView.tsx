@@ -1,4 +1,4 @@
-import * as React from "react"
+import * as React from "react";
 import {
   Search,
   Lock,
@@ -9,28 +9,28 @@ import {
   ArrowUpDown,
   Filter,
   X,
-} from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
-import type { Bounty } from "../types"
+} from "@/components/ui/select";
+import type { Bounty } from "../types";
 
 interface MarketplaceViewProps {
-  bounties: Bounty[]
-  userRole?: string
-  onClaimBounty: (bountyId: string) => void
-  onDownloadBounty?: (bountyId: string) => Promise<void> | void
-  onOpenReviewer: (bounty: Bounty) => void
+  bounties: Bounty[];
+  userRole?: string;
+  onClaimBounty: (bountyId: string) => void;
+  onDownloadBounty?: (bountyId: string) => Promise<void> | void;
+  onOpenReviewer: (bounty: Bounty) => void;
 }
 
-type SortOption = "REWARD_DESC" | "REWARD_ASC" | "TESTS_DESC" | "NEWEST"
+type SortOption = "REWARD_DESC" | "REWARD_ASC" | "TESTS_DESC" | "NEWEST";
 
 export function MarketplaceView({
   bounties,
@@ -38,83 +38,93 @@ export function MarketplaceView({
   onClaimBounty,
   onDownloadBounty,
 }: MarketplaceViewProps) {
-  const [searchQuery, setSearchQuery] = React.useState("")
-  const [downloadingId, setDownloadingId] = React.useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = React.useState("");
+  const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
   // Marketplace only displays claimable open inventory, with optional settled archive
-  const [activeTab, setActiveTab] = React.useState<"OPEN" | "SETTLED">("OPEN")
-  const [categoryFilter, setCategoryFilter] = React.useState<string>("ALL")
-  const [sortBy, setSortBy] = React.useState<SortOption>("REWARD_DESC")
-  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid")
+  const [activeTab, setActiveTab] = React.useState<"OPEN" | "SETTLED">("OPEN");
+  const [categoryFilter, setCategoryFilter] = React.useState<string>("ALL");
+  const [sortBy, setSortBy] = React.useState<SortOption>("REWARD_DESC");
+  const [viewMode, setViewMode] = React.useState<"grid" | "list">("grid");
 
   // Dynamic list of unique categories
   const categories = React.useMemo(() => {
-    const set = new Set<string>()
+    const set = new Set<string>();
     bounties.forEach((b) => {
-      if (b.category) set.add(b.category)
-    })
-    return Array.from(set)
-  }, [bounties])
+      if (b.category) set.add(b.category);
+    });
+    return Array.from(set);
+  }, [bounties]);
 
   // Aggregate stats strictly for marketplace scope
   const openBounties = React.useMemo(() => {
-    return bounties.filter((b) => b.status === "OPEN_FOR_CLAIM")
-  }, [bounties])
+    return bounties.filter((b) => b.status === "OPEN_FOR_CLAIM");
+  }, [bounties]);
 
   const settledBounties = React.useMemo(() => {
-    return bounties.filter((b) => b.status === "SETTLED")
-  }, [bounties])
+    return bounties.filter((b) => b.status === "SETTLED");
+  }, [bounties]);
 
   const totalOpenEscrow = React.useMemo(() => {
-    return openBounties.reduce((sum, b) => sum + b.escrowAmount, 0)
-  }, [openBounties])
+    return openBounties.reduce((sum, b) => sum + b.escrowAmount, 0);
+  }, [openBounties]);
 
   // Filtered and sorted bounties for active tab
   const filteredBounties = React.useMemo(() => {
-    const pool = activeTab === "OPEN" ? openBounties : settledBounties
+    const pool = activeTab === "OPEN" ? openBounties : settledBounties;
 
     return pool
       .filter((b) => {
         // Category filter
         if (categoryFilter !== "ALL" && b.category !== categoryFilter) {
-          return false
+          return false;
         }
         // Search query
         if (searchQuery.trim()) {
-          const q = searchQuery.toLowerCase()
-          const matchTitle = b.title.toLowerCase().includes(q)
-          const matchDesc = b.description.toLowerCase().includes(q)
-          const matchCategory = b.category.toLowerCase().includes(q)
-          const matchId = b.id.toLowerCase().includes(q)
+          const q = searchQuery.toLowerCase();
+          const matchTitle = b.title.toLowerCase().includes(q);
+          const matchDesc = b.description.toLowerCase().includes(q);
+          const matchCategory = b.category.toLowerCase().includes(q);
+          const matchId = b.id.toLowerCase().includes(q);
           if (!matchTitle && !matchDesc && !matchCategory && !matchId) {
-            return false
+            return false;
           }
         }
-        return true
+        return true;
       })
       .sort((a, b) => {
         switch (sortBy) {
           case "REWARD_DESC":
-            return b.escrowAmount - a.escrowAmount
+            return b.escrowAmount - a.escrowAmount;
           case "REWARD_ASC":
-            return a.escrowAmount - b.escrowAmount
+            return a.escrowAmount - b.escrowAmount;
           case "TESTS_DESC": {
-            const ratioB = b.testsTotal > 0 ? b.testsPassed / b.testsTotal : 0
-            const ratioA = a.testsTotal > 0 ? a.testsPassed / a.testsTotal : 0
-            return ratioB - ratioA
+            const ratioB = b.testsTotal > 0 ? b.testsPassed / b.testsTotal : 0;
+            const ratioA = a.testsTotal > 0 ? a.testsPassed / a.testsTotal : 0;
+            return ratioB - ratioA;
           }
           case "NEWEST":
           default:
-            return b.id.localeCompare(a.id)
+            return b.id.localeCompare(a.id);
         }
-      })
-  }, [activeTab, openBounties, settledBounties, categoryFilter, searchQuery, sortBy])
+      });
+  }, [
+    activeTab,
+    openBounties,
+    settledBounties,
+    categoryFilter,
+    searchQuery,
+    sortBy,
+  ]);
 
-  const stages = ["SCAFFOLDING", "CORE_LOGIC", "TESTING", "FINAL_POLISH"]
+  const stages = ["SCAFFOLDING", "CORE_LOGIC", "TESTING", "FINAL_POLISH"];
   // Claiming is developer work — buyers (including the poster) never see the CTA.
   // The server enforces this too (403 for non-DEVELOPER sessions).
-  const canClaim = userRole !== "BUYER"
+  const canClaim = userRole !== "BUYER";
   const canDownload = (b: Bounty) =>
-    userRole === "BUYER" && b.status === "SETTLED" && !!b.artifactSha256 && !!onDownloadBounty
+    userRole === "BUYER" &&
+    b.status === "SETTLED" &&
+    !!b.artifactSha256 &&
+    !!onDownloadBounty;
 
   const handleDownload = async (bountyId: string) => {
     if (!onDownloadBounty) return;
@@ -135,7 +145,8 @@ export function MarketplaceView({
             Marketplace
           </h1>
           <p className="mt-1 font-mono text-sm text-muted-foreground">
-            Browse and claim autonomous agent tasks funded by PayPal Orders v2 escrow.
+            Browse and claim autonomous agent tasks funded by PayPal Orders v2
+            escrow.
           </p>
         </div>
 
@@ -146,18 +157,6 @@ export function MarketplaceView({
             <span className="font-semibold text-foreground">
               ${totalOpenEscrow.toFixed(2)} USD
             </span>
-          </div>
-
-          <div className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-3 font-mono text-sm">
-            <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-            <span className="text-muted-foreground">Open Tasks:</span>
-            <span className="font-semibold text-foreground">{openBounties.length}</span>
-          </div>
-
-          <div className="flex h-8 items-center gap-1.5 rounded-md border border-border bg-muted/30 px-3 font-mono text-sm">
-            <CheckCircle2 className="size-3 text-emerald-500" />
-            <span className="text-muted-foreground">Settled Archive:</span>
-            <span className="font-semibold text-foreground">{settledBounties.length}</span>
           </div>
         </div>
       </div>
@@ -190,7 +189,10 @@ export function MarketplaceView({
             {/* Category Filter (Exact h-8) */}
             <div className="flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-sm font-mono">
               <Filter className="size-3 text-muted-foreground shrink-0" />
-              <Select value={categoryFilter} onValueChange={(v) => setCategoryFilter(v ?? "ALL")}>
+              <Select
+                value={categoryFilter}
+                onValueChange={(v) => setCategoryFilter(v ?? "ALL")}
+              >
                 <SelectTrigger className="h-full border-0 bg-transparent px-0 text-foreground shadow-none focus:ring-0 [&_svg]:size-3">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
@@ -208,14 +210,25 @@ export function MarketplaceView({
             {/* Sort Dropdown (Exact h-8) */}
             <div className="flex h-8 items-center gap-1.5 rounded-md border border-input bg-background px-2.5 text-sm font-mono">
               <ArrowUpDown className="size-3 text-muted-foreground shrink-0" />
-              <Select value={sortBy} onValueChange={(v) => setSortBy((v as SortOption) ?? "REWARD_DESC")}>
+              <Select
+                value={sortBy}
+                onValueChange={(v) =>
+                  setSortBy((v as SortOption) ?? "REWARD_DESC")
+                }
+              >
                 <SelectTrigger className="h-full border-0 bg-transparent px-0 text-foreground shadow-none focus:ring-0 [&_svg]:size-3">
                   <SelectValue placeholder="Sort" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="REWARD_DESC">Reward: High to Low</SelectItem>
-                  <SelectItem value="REWARD_ASC">Reward: Low to High</SelectItem>
-                  <SelectItem value="TESTS_DESC">Tests: Most Passing</SelectItem>
+                  <SelectItem value="REWARD_DESC">
+                    Reward: High to Low
+                  </SelectItem>
+                  <SelectItem value="REWARD_ASC">
+                    Reward: Low to High
+                  </SelectItem>
+                  <SelectItem value="TESTS_DESC">
+                    Tests: Most Passing
+                  </SelectItem>
                   <SelectItem value="NEWEST">Latest ID</SelectItem>
                 </SelectContent>
               </Select>
@@ -298,8 +311,8 @@ export function MarketplaceView({
               variant="ghost"
               size="sm"
               onClick={() => {
-                setCategoryFilter("ALL")
-                setSearchQuery("")
+                setCategoryFilter("ALL");
+                setSearchQuery("");
               }}
               className="text-sm font-mono text-muted-foreground hover:text-foreground h-7 px-2 cursor-pointer ml-auto"
             >
@@ -327,8 +340,8 @@ export function MarketplaceView({
                 variant="outline"
                 size="sm"
                 onClick={() => {
-                  setCategoryFilter("ALL")
-                  setSearchQuery("")
+                  setCategoryFilter("ALL");
+                  setSearchQuery("");
                 }}
                 className="font-mono text-sm cursor-pointer"
               >
@@ -341,17 +354,17 @@ export function MarketplaceView({
         /* GRID VIEW */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredBounties.map((bounty) => {
-            const isSettled = bounty.status === "SETTLED"
+            const isSettled = bounty.status === "SETTLED";
 
             const currentStageIndex =
               stages.indexOf(bounty.currentStage) !== -1
                 ? stages.indexOf(bounty.currentStage)
-                : 0
+                : 0;
 
             const testRatio =
               bounty.testsTotal > 0
                 ? Math.round((bounty.testsPassed / bounty.testsTotal) * 100)
-                : 0
+                : 0;
 
             return (
               <div
@@ -424,7 +437,8 @@ export function MarketplaceView({
                       <span>Tests:</span>
                       <span
                         className={
-                          bounty.testsPassed === bounty.testsTotal && bounty.testsTotal > 0
+                          bounty.testsPassed === bounty.testsTotal &&
+                          bounty.testsTotal > 0
                             ? "text-emerald-500 font-medium"
                             : "text-foreground font-medium"
                         }
@@ -454,7 +468,9 @@ export function MarketplaceView({
                         className="w-full font-mono text-sm cursor-pointer"
                       >
                         <span>
-                          {downloadingId === bounty.id ? "issuing link…" : "Download .tar.gz"}
+                          {downloadingId === bounty.id
+                            ? "issuing link…"
+                            : "Download .tar.gz"}
                         </span>
                       </Button>
                     ) : (
@@ -477,7 +493,7 @@ export function MarketplaceView({
                   )}
                 </div>
               </div>
-            )
+            );
           })}
         </div>
       ) : (
@@ -496,17 +512,26 @@ export function MarketplaceView({
             </thead>
             <tbody className="divide-y divide-border">
               {filteredBounties.map((b) => {
-                const isSettled = b.status === "SETTLED"
+                const isSettled = b.status === "SETTLED";
 
                 return (
-                  <tr key={b.id} className="hover:bg-muted/30 transition-colors">
+                  <tr
+                    key={b.id}
+                    className="hover:bg-muted/30 transition-colors"
+                  >
                     <td className="py-3 px-4">
                       {isSettled ? (
-                        <Badge variant="outline" className="font-mono text-[10px] text-muted-foreground">
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-[10px] text-muted-foreground"
+                        >
                           Settled
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="font-mono text-[10px]">
+                        <Badge
+                          variant="outline"
+                          className="font-mono text-[10px]"
+                        >
                           <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" />
                           Claimable
                         </Badge>
@@ -520,7 +545,9 @@ export function MarketplaceView({
                         {b.description}
                       </div>
                     </td>
-                    <td className="py-3 px-4 text-muted-foreground">{b.category}</td>
+                    <td className="py-3 px-4 text-muted-foreground">
+                      {b.category}
+                    </td>
                     <td className="py-3 px-4">
                       <div className="text-foreground">{b.currentStage}</div>
                       <div className="text-[10px] text-muted-foreground">
@@ -540,10 +567,14 @@ export function MarketplaceView({
                             disabled={downloadingId === b.id}
                             className="font-mono text-sm cursor-pointer h-7"
                           >
-                            <span>{downloadingId === b.id ? "…" : "Download"}</span>
+                            <span>
+                              {downloadingId === b.id ? "…" : "Download"}
+                            </span>
                           </Button>
                         ) : (
-                          <span className="text-[11px] text-muted-foreground">Captured</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            Captured
+                          </span>
                         )
                       ) : canClaim ? (
                         <Button
@@ -555,16 +586,18 @@ export function MarketplaceView({
                           <span>Claim Lease</span>
                         </Button>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground">Awaiting agent</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          Awaiting agent
+                        </span>
                       )}
                     </td>
                   </tr>
-                )
+                );
               })}
             </tbody>
           </table>
         </div>
       )}
     </div>
-  )
+  );
 }

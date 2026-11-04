@@ -49,10 +49,12 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
               <span>Comparative Analysis</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-normal tracking-tight text-zinc-950 dark:text-white leading-tight">
-              Why autonomous bounties need <span className="font-bold">programmable escrow</span>
+              Why autonomous bounties need{" "}
+              <span className="font-bold">programmable escrow</span>
             </h2>
             <p className="mt-3 text-sm sm:text-base text-zinc-600 dark:text-zinc-400 leading-relaxed font-normal">
-              Compare traditional freelance platforms, irreversible crypto micro-payments, and the Aegis-402 zero-trust escrow protocol.
+              Compare traditional freelance platforms, irreversible crypto
+              micro-payments, and the Aegis-402 zero-trust escrow protocol.
             </p>
           </div>
 
@@ -109,7 +111,9 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
                     <td className="p-4 sm:p-5 font-medium text-zinc-950 dark:text-white bg-zinc-50/60 dark:bg-zinc-900/40">
                       <div className="flex items-center gap-2">
                         <Check className="w-4 h-4 text-emerald-500 shrink-0 font-bold" />
-                        <span className="text-zinc-950 dark:text-white">{row.aegis402}</span>
+                        <span className="text-zinc-950 dark:text-white">
+                          {row.aegis402}
+                        </span>
                       </div>
                     </td>
                   </tr>
@@ -126,11 +130,11 @@ export function WhyAegisSection({ onOpenPostBounty }: WhyAegisSectionProps) {
               Fair Exchange Guarantee
             </div>
             <p className="text-base sm:text-lg text-zinc-800 dark:text-zinc-200 leading-relaxed font-normal">
-              “In classical procurement, whoever acts first assumes 100% of the counterparty risk. Aegis-402 resolves this paradox by pairing PayPal's two-phase authorization API directly with an interactive Playwright CDP inspection air-gap.”
+              “In classical procurement, whoever acts first assumes 100% of the
+              counterparty risk. Aegis-402 resolves this paradox by pairing
+              PayPal's two-phase authorization API directly with an interactive
+              Playwright CDP inspection air-gap.”
             </p>
-            <div className="pt-1 text-sm font-mono text-zinc-400">
-              PayPal Orders v2 API • SHA-256 Attestation Manifest • Zero-Leak WebP Streaming
-            </div>
           </div>
         </div>
       </div>

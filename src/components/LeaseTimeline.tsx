@@ -114,10 +114,13 @@ export function LeaseTimeline({ bounties, theme, onSelectBounty }: LeaseTimeline
           <CalendarClock className="size-4" />
           <span>Lease Timeline</span>
         </h2>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          {activeCount} active {activeCount === 1 ? "lease" : "leases"} · {openCount} open{" "}
-          {openCount === 1 ? "bounty" : "bounties"} · 30-minute windows · PayPal lock per bounty.
-          Powered by Bryntum Scheduler (trial).
+        <p className="text-sm text-muted-foreground mt-0.5 flex items-center gap-2">
+          <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted text-foreground">
+            {activeCount} active {activeCount === 1 ? "lease" : "leases"}
+          </span>
+          <span className="font-mono text-[11px] px-1.5 py-0.5 rounded bg-muted text-foreground">
+            {openCount} open {openCount === 1 ? "bounty" : "bounties"}
+          </span>
         </p>
       </div>
 
@@ -155,7 +158,7 @@ export function LeaseTimeline({ bounties, theme, onSelectBounty }: LeaseTimeline
               },
               { text: "Status", field: "status", width: 150 },
             ]}
-            onEventClick={({ eventRecord }: { eventRecord: { id: string } }) => {
+            onEventClick={({ eventRecord }: { eventRecord: { id: string | number } }) => {
               const id = String(eventRecord.id).replace(/^evt-/, "");
               const bounty = bounties.find((b) => b.id === id);
               if (bounty) onSelectBounty?.(bounty);

@@ -377,7 +377,7 @@ export function ZeroLeakCanvasViewer({
               </div>
               {receipt.key && (
                 <div className="flex justify-between items-center">
-                  <span className="text-muted-foreground">Decryption key</span>
+                  <span className="text-muted-foreground">Signed download</span>
                   <span className="flex items-center gap-2 font-mono">
                     {receipt.key}
                     <button
@@ -392,6 +392,11 @@ export function ZeroLeakCanvasViewer({
                     </button>
                   </span>
                 </div>
+              )}
+              {!receipt.key && (
+                <p className="text-muted-foreground">
+                  Sealed vault unlocked — pull it from Downloads.
+                </p>
               )}
             </div>
             <Badge variant="emerald" className="text-sm">

@@ -1,12 +1,11 @@
 import { useState, useEffect } from "react";
 import { motion } from "motion/react";
-import { ArrowRight, Lock, EyeOff, Bot } from "lucide-react";
+import { ArrowRight, Lock, EyeOff, Bot, Check } from "lucide-react";
 import { toast } from "sonner";
 import { HalftoneHeroBackground } from "./HalftoneHeroBackground";
 
 interface HeroSectionProps {
   theme?: "light" | "dark";
-  onOpenReviewer?: () => void;
   onOpenPostBounty: () => void;
   onOpenRegisterAgent: () => void;
 }
@@ -41,7 +40,6 @@ const charVariants = {
 
 export function HeroSection({
   theme = "dark",
-  onOpenReviewer,
   onOpenPostBounty,
   onOpenRegisterAgent,
 }: HeroSectionProps) {
@@ -133,7 +131,7 @@ export function HeroSection({
                   repeat: 3,
                   delay: 0.35,
                 }}
-                className="inline-block ml-0.5 w-[2px] h-[0.75em] bg-zinc-500 dark:bg-zinc-400 align-baseline no-underline"
+                className="inline-block ml-0.5 w-0.5 h-[0.75em] bg-zinc-500 dark:bg-zinc-400 align-baseline no-underline"
               />
             </motion.span>
           </motion.h1>
@@ -212,15 +210,6 @@ export function HeroSection({
                 <EyeOff className="w-3 h-3" />
                 <span>0 DOM NODES OR REPO FILES EXPOSED</span>
               </div>
-              {onOpenReviewer && (
-                <button
-                  type="button"
-                  onClick={onOpenReviewer}
-                  className="hidden sm:inline-flex items-center gap-1 text-zinc-700 dark:text-zinc-300 hover:text-black dark:hover:text-white underline underline-offset-2 transition-colors cursor-pointer"
-                >
-                  Inspect Live Reviewer ↗
-                </button>
-              )}
             </div>
           </div>
 
@@ -269,14 +258,21 @@ export function HeroSection({
                   e.stopPropagation();
                   setCaptured(true);
                   toast.success(
-                    "PayPal Capture simulated! Decryption key unlocked."
+                    "PayPal Capture simulated! Signed download unlocked."
                   );
                   setTimeout(() => setCaptured(false), 2500);
                 }}
                 disabled={captured}
-                className="w-full py-2 rounded bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black text-sm font-mono font-medium transition-all cursor-pointer disabled:opacity-50"
+                className="w-full py-2 rounded bg-black hover:bg-zinc-800 dark:bg-white dark:hover:bg-zinc-200 text-white dark:text-black text-sm font-mono font-medium transition-all cursor-pointer disabled:opacity-50 flex items-center justify-center gap-1.5"
               >
-                {captured ? "✔ CAPTURED & UNSEALED" : "SIMULATE PAYPAL CAPTURE"}
+                {captured ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>CAPTURED & UNSEALED</span>
+                  </>
+                ) : (
+                  "SIMULATE PAYPAL CAPTURE"
+                )}
               </button>
             </div>
 

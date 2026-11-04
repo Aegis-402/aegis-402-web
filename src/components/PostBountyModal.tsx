@@ -25,10 +25,16 @@ type Phase = "form" | "approve" | "authorizing" | "creating-bounty";
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
-export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBountyModalProps) {
+export function PostBountyModal({
+  isOpen,
+  onClose,
+  onBountyCreated,
+}: PostBountyModalProps) {
   const [title, setTitle] = useState("");
   const [escrowAmount, setEscrowAmount] = useState("250");
-  const [category, setCategory] = useState<"Web App" | "API / Backend" | "AI Agent Tool">("Web App");
+  const [category, setCategory] = useState<
+    "Web App" | "API / Backend" | "AI Agent Tool"
+  >("Web App");
   const [phase, setPhase] = useState<Phase>("form");
   const [feeAck, setFeeAck] = useState(false);
   const [problemStatement, setProblemStatement] = useState("");
@@ -39,7 +45,12 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
 
   const busy = phase !== "form" && phase !== "approve";
 
-  const setListItem = (setter: (v: string[]) => void, list: string[], i: number, v: string) => {
+  const setListItem = (
+    setter: (v: string[]) => void,
+    list: string[],
+    i: number,
+    v: string
+  ) => {
     const next = [...list];
     next[i] = v;
     setter(next);
@@ -47,8 +58,15 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
   const addListItem = (setter: (v: string[]) => void, list: string[]) => {
     if (list.length < 20) setter([...list, ""]);
   };
-  const removeListItem = (setter: (v: string[]) => void, list: string[], i: number) => {
-    if (list.length <= 1) { setter([""]); return; }
+  const removeListItem = (
+    setter: (v: string[]) => void,
+    list: string[],
+    i: number
+  ) => {
+    if (list.length <= 1) {
+      setter([""]);
+      return;
+    }
     setter(list.filter((_, j) => j !== i));
   };
 
@@ -59,7 +77,9 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
       return;
     }
     if (problemStatement.trim().length < 20) {
-      toast.error("Problem statement required (min 20 chars) — agents need context to bid.");
+      toast.error(
+        "Problem statement required (min 20 chars) — agents need context to bid."
+      );
       return;
     }
     const reqs = requirements.map((s) => s.trim()).filter(Boolean);
@@ -117,10 +137,14 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
         body: JSON.stringify({ orderId: data.orderId }),
       });
       if (!authRes.ok) {
-        const err = (await authRes.json().catch(() => ({}))) as { error?: string };
+        const err = (await authRes.json().catch(() => ({}))) as {
+          error?: string;
+        };
         throw new Error(err.error || `HTTP ${authRes.status}`);
       }
-      const { authorizationId } = (await authRes.json()) as { authorizationId: string };
+      const { authorizationId } = (await authRes.json()) as {
+        authorizationId: string;
+      };
 
       // Step 3: create the bounty bound to the real authorization
       setPhase("creating-bounty");
@@ -146,7 +170,9 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
 
       const created = await res.json();
       onBountyCreated(created);
-      toast.success(`PayPal Escrow Authorized! $${escrowAmount}.00 USD locked in escrow.`);
+      toast.success(
+        `PayPal Escrow Authorized! $${escrowAmount}.00 USD locked in escrow.`
+      );
       onClose();
       setTitle("");
       setProblemStatement("");
@@ -178,12 +204,24 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
           <div className="flex items-center justify-between pb-4 border-b border-zinc-200 dark:border-zinc-800">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 flex items-center justify-center">
-                <img src="/aegis-402-logo-black.svg" alt="Aegis-402" className="w-7 h-7 dark:hidden" />
-                <img src="/aegis-402-logo-white.svg" alt="Aegis-402" className="w-7 h-7 hidden dark:block" />
+                <img
+                  src="/aegis-402-logo-black.svg"
+                  alt="Aegis-402"
+                  className="w-7 h-7 dark:hidden"
+                />
+                <img
+                  src="/aegis-402-logo-white.svg"
+                  alt="Aegis-402"
+                  className="w-7 h-7 hidden dark:block"
+                />
               </div>
               <div>
-                <h3 className="font-medium text-base text-zinc-950 dark:text-white tracking-tight">Post Bounty with PayPal Escrow</h3>
-                <p className="text-sm text-zinc-500">Funds are locked via PayPal and released on your approval</p>
+                <h3 className="font-medium text-base text-zinc-950 dark:text-white tracking-tight">
+                  Post Bounty with PayPal Escrow
+                </h3>
+                <p className="text-sm text-zinc-500">
+                  Funds are locked via PayPal and released on your approval
+                </p>
               </div>
             </div>
             <button
@@ -194,14 +232,23 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
             </button>
           </div>
 
-          {phase === "approve" || phase === "authorizing" || phase === "creating-bounty" ? (
+          {phase === "approve" ||
+          phase === "authorizing" ||
+          phase === "creating-bounty" ? (
             <div className="mt-5 space-y-4 text-sm">
               <div className="p-4 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-sm text-zinc-700 dark:text-zinc-300">
-                <strong className="text-zinc-950 dark:text-white">Lock ${escrowAmount}.00 escrow</strong> — pay with PayPal below.
-                Funds hold via AUTHORIZE and release only on your approval of the deliverable.
+                <strong className="text-zinc-950 dark:text-white">
+                  Lock ${escrowAmount}.00 escrow
+                </strong>{" "}
+                — pay with PayPal below. Funds hold via AUTHORIZE and release
+                only on your approval of the deliverable.
               </div>
               <div className="flex items-center gap-2 text-sm text-zinc-500">
-                <img src="/paypal-monogram.png" alt="PayPal" className="h-[18px] w-auto shrink-0" />
+                <img
+                  src="/paypal-monogram.png"
+                  alt="PayPal"
+                  className="h-4.5 w-auto shrink-0"
+                />
                 <span>Payments powered by PayPal</span>
               </div>
               {phase === "approve" ? (
@@ -209,7 +256,9 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
                   createOrder={handleCreateOrder}
                   onApprove={handleApprove}
                   onError={(error) => {
-                    toast.error(`PayPal payment failed: ${error?.message || "unknown error"}`);
+                    toast.error(
+                      `PayPal payment failed: ${error?.message || "unknown error"}`
+                    );
                   }}
                   onCancel={() => {
                     toast.info("PayPal approval cancelled — no funds locked.");
@@ -219,7 +268,11 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
               ) : (
                 <div className="flex items-center justify-center gap-2 py-3 text-sm text-zinc-500">
                   <div className="w-4 h-4 border-2 border-zinc-300 border-t-zinc-700 rounded-full animate-spin" />
-                  <span>{phase === "authorizing" ? "Authorizing escrow hold…" : "Creating bounty…"}</span>
+                  <span>
+                    {phase === "authorizing"
+                      ? "Authorizing escrow hold…"
+                      : "Creating bounty…"}
+                  </span>
                 </div>
               )}
               <Button
@@ -232,169 +285,245 @@ export function PostBountyModal({ isOpen, onClose, onBountyCreated }: PostBounty
               </Button>
             </div>
           ) : (
-          /* Form */
-          <form onSubmit={handleSubmit} className="mt-5 space-y-4">
-            <div>
-              <Label className="mb-1.5">Bounty Title / Deliverable Goal</Label>
-              <Input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Next.js Auth Flow with Webhooks"
-                required
-                className="h-10 text-sm font-sans"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
+            /* Form */
+            <form onSubmit={handleSubmit} className="mt-5 space-y-4">
               <div>
-                <Label className="mb-1.5">Escrow Hold Amount ($USD)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  step="1"
-                  value={escrowAmount}
-                  onChange={(e) => setEscrowAmount(e.target.value)}
-                  required
-                  startIcon={<span className="text-sm">$</span>}
-                  className="h-10 text-sm font-mono font-bold"
-                />
-              </div>
-
-              <div>
-                <Label className="mb-1.5">Category</Label>
-                <Select
-                  value={category}
-                  onValueChange={(v) => setCategory(v as any)}
-                >
-                  <SelectTrigger className="w-full h-10 text-sm data-[size=default]:h-10">
-                    <SelectValue placeholder="Select category" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Web App">Web App (Canvas Stream)</SelectItem>
-                    <SelectItem value="API / Backend">API / Backend</SelectItem>
-                    <SelectItem value="AI Agent Tool">AI Agent Tool</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-1.5">Problem Statement <span className="text-rose-500">*</span></Label>
-              <textarea
-                rows={4}
-                value={problemStatement}
-                onChange={(e) => setProblemStatement(e.target.value)}
-                placeholder="What problem does this solve and for whom? Be specific — agents bid on this."
-                required
-                className="w-full px-3 py-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 text-sm focus:outline-none focus-visible:border-black dark:focus-visible:border-white focus-visible:ring-1 focus-visible:ring-black dark:focus-visible:ring-white placeholder:text-zinc-400"
-              />
-            </div>
-
-            <div>
-              <Label className="mb-1.5">Requirements <span className="text-rose-500">*</span> <span className="font-normal text-zinc-400">— min 1</span></Label>
-              <div className="space-y-2">
-                {requirements.map((r, i) => (
-                  <div key={i} className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={r}
-                      onChange={(e) => setListItem(setRequirements, requirements, i, e.target.value)}
-                      placeholder={`Requirement ${i + 1} — e.g. OAuth login with refresh tokens`}
-                      className="flex-1 h-10 text-sm font-sans"
-                    />
-                    <Button type="button" variant="outline" size="icon" onClick={() => removeListItem(setRequirements, requirements, i)} title="Remove requirement" className="size-10 shrink-0 text-rose-500 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800">
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="ghost" size="sm" onClick={() => addListItem(setRequirements, requirements)} className="text-sm text-[#0070ba] hover:text-[#005ea6] px-0">
-                  <Plus className="size-4" />
-                  <span>Add requirement</span>
-                </Button>
-              </div>
-            </div>
-
-            <div>
-              <Label className="mb-1.5">Acceptance Criteria <span className="text-rose-500">*</span> <span className="font-normal text-zinc-400">— how you will verify</span></Label>
-              <div className="space-y-2">
-                {acceptanceCriteria.map((a, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <Input
-                      type="text"
-                      value={a}
-                      onChange={(e) => setListItem(setAcceptanceCriteria, acceptanceCriteria, i, e.target.value)}
-                      placeholder={`Criterion ${i + 1} — e.g. All tests pass, p95 latency < 200ms`}
-                      className="flex-1 h-10 text-sm font-sans"
-                    />
-                    <Button type="button" variant="outline" size="icon" onClick={() => removeListItem(setAcceptanceCriteria, acceptanceCriteria, i)} title="Remove criterion" className="size-10 shrink-0 text-rose-500 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800">
-                      <Trash2 className="size-4" />
-                    </Button>
-                  </div>
-                ))}
-                <Button type="button" variant="ghost" size="sm" onClick={() => addListItem(setAcceptanceCriteria, acceptanceCriteria)} className="text-sm text-[#0070ba] hover:text-[#005ea6] px-0">
-                  <Plus className="size-4" />
-                  <span>Add criterion</span>
-                </Button>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="mb-1.5">Tech / Runtime Constraints</Label>
+                <Label className="mb-1.5">
+                  Bounty Title / Deliverable Goal
+                </Label>
                 <Input
                   type="text"
-                  value={techConstraints}
-                  onChange={(e) => setTechConstraints(e.target.value)}
-                  placeholder="e.g. Node 22, no external network"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Next.js Auth Flow with Webhooks"
+                  required
                   className="h-10 text-sm font-sans"
                 />
               </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1.5">Escrow Hold Amount ($USD)</Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    step="1"
+                    value={escrowAmount}
+                    onChange={(e) => setEscrowAmount(e.target.value)}
+                    required
+                    startIcon={<span className="text-sm">$</span>}
+                    className="h-10 text-sm font-mono font-bold"
+                  />
+                </div>
+
+                <div>
+                  <Label className="mb-1.5">Category</Label>
+                  <Select
+                    value={category}
+                    onValueChange={(v) => setCategory(v as any)}
+                  >
+                    <SelectTrigger className="w-full h-10 text-sm data-[size=default]:h-10">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Web App">
+                        Web App (Canvas Stream)
+                      </SelectItem>
+                      <SelectItem value="API / Backend">
+                        API / Backend
+                      </SelectItem>
+                      <SelectItem value="AI Agent Tool">
+                        AI Agent Tool
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div>
-                <Label className="mb-1.5">Deadline</Label>
-                <Input
-                  type="date"
-                  value={timeline}
-                  min={todayISO()}
-                  onChange={(e) => setTimeline(e.target.value)}
-                  className="h-10 text-sm font-sans"
+                <Label className="mb-1.5">
+                  Problem Statement <span className="text-rose-500">*</span>
+                </Label>
+                <textarea
+                  rows={4}
+                  value={problemStatement}
+                  onChange={(e) => setProblemStatement(e.target.value)}
+                  placeholder="What problem does this solve and for whom? Be specific — agents bid on this."
+                  required
+                  className="w-full px-3 py-2.5 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-950 text-sm focus:outline-none focus-visible:border-black dark:focus-visible:border-white focus-visible:ring-1 focus-visible:ring-black dark:focus-visible:ring-white placeholder:text-zinc-400"
                 />
               </div>
-            </div>
 
-            {/* Powered by PayPal */}
-            <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
-              <img src="/paypal-monogram.png" alt="PayPal" className="h-[18px] w-auto shrink-0" />
-              <span className="text-sm">Payments powered by PayPal</span>
-            </div>
+              <div>
+                <Label className="mb-1.5">
+                  Requirements <span className="text-rose-500">*</span>{" "}
+                  <span className="font-normal text-zinc-400">— min 1</span>
+                </Label>
+                <div className="space-y-2">
+                  {requirements.map((r, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        type="text"
+                        value={r}
+                        onChange={(e) =>
+                          setListItem(
+                            setRequirements,
+                            requirements,
+                            i,
+                            e.target.value
+                          )
+                        }
+                        placeholder={`Requirement ${i + 1} — e.g. OAuth login with refresh tokens`}
+                        className="flex-1 h-10 text-sm font-sans"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() =>
+                          removeListItem(setRequirements, requirements, i)
+                        }
+                        title="Remove requirement"
+                        className="size-10 shrink-0 text-rose-500 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => addListItem(setRequirements, requirements)}
+                    className="text-sm text-[#0070ba] hover:text-[#005ea6] px-0"
+                  >
+                    <Plus className="size-4" />
+                    <span>Add requirement</span>
+                  </Button>
+                </div>
+              </div>
 
-            <Label className="flex items-start gap-2.5 p-3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-sm text-zinc-600 dark:text-zinc-400 cursor-pointer leading-relaxed font-normal">
-              <Checkbox
-                checked={feeAck}
-                onCheckedChange={(v) => setFeeAck(v === true)}
-                className="mt-0.5"
-              />
-              <span>
-                I understand: <strong>rejecting</strong> a bad deliverable is free (escrow stays locked, bounty re-opens). <strong>Cancelling</strong> the bounty after agents attempted work incurs a <strong>1% void fee</strong> — captured before the 99% refund. Code downloads expire 7 days after settlement.
-              </span>
-            </Label>
+              <div>
+                <Label className="mb-1.5">
+                  Acceptance Criteria <span className="text-rose-500">*</span>{" "}
+                  <span className="font-normal text-zinc-400">
+                    — how you will verify
+                  </span>
+                </Label>
+                <div className="space-y-2">
+                  {acceptanceCriteria.map((a, i) => (
+                    <div key={i} className="flex gap-2 items-center">
+                      <Input
+                        type="text"
+                        value={a}
+                        onChange={(e) =>
+                          setListItem(
+                            setAcceptanceCriteria,
+                            acceptanceCriteria,
+                            i,
+                            e.target.value
+                          )
+                        }
+                        placeholder={`Criterion ${i + 1} — e.g. All tests pass, p95 latency < 200ms`}
+                        className="flex-1 h-10 text-sm font-sans"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon"
+                        onClick={() =>
+                          removeListItem(
+                            setAcceptanceCriteria,
+                            acceptanceCriteria,
+                            i
+                          )
+                        }
+                        title="Remove criterion"
+                        className="size-10 shrink-0 text-rose-500 hover:text-rose-600 hover:border-rose-300 dark:hover:border-rose-800"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() =>
+                      addListItem(setAcceptanceCriteria, acceptanceCriteria)
+                    }
+                    className="text-sm text-[#0070ba] hover:text-[#005ea6] px-0"
+                  >
+                    <Plus className="size-4" />
+                    <span>Add criterion</span>
+                  </Button>
+                </div>
+              </div>
 
-            {/* Submit Button */}
-            <Button
-              type="submit"
-              disabled={busy}
-              className="w-full py-3 h-auto rounded-xl bg-[#0070ba] hover:bg-[#005ea6] text-white font-bold text-sm shadow-md shadow-blue-500/15 active:scale-[0.98] transition-all"
-            >
-              {busy ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              ) : (
-                <span className="flex items-center gap-2">
-                  <Lock className="w-4 h-4" />
-                  <span>{`Authorize $${escrowAmount}.00 Escrow Hold`}</span>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="mb-1.5">Tech / Runtime Constraints</Label>
+                  <Input
+                    type="text"
+                    value={techConstraints}
+                    onChange={(e) => setTechConstraints(e.target.value)}
+                    placeholder="e.g. Node 22, no external network"
+                    className="h-10 text-sm font-sans"
+                  />
+                </div>
+                <div>
+                  <Label className="mb-1.5">Deadline</Label>
+                  <Input
+                    type="date"
+                    value={timeline}
+                    min={todayISO()}
+                    onChange={(e) => setTimeline(e.target.value)}
+                    className="h-10 text-sm font-sans"
+                  />
+                </div>
+              </div>
+
+              {/* Powered by PayPal */}
+              <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                <img
+                  src="/paypal-monogram.png"
+                  alt="PayPal"
+                  className="h-4.5 w-auto shrink-0"
+                />
+                <span className="text-sm">Payments powered by PayPal</span>
+              </div>
+
+              <Label className="flex items-start gap-2.5 p-3 rounded-md border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-950 text-sm text-zinc-600 dark:text-zinc-400 cursor-pointer leading-relaxed font-normal">
+                <Checkbox
+                  checked={feeAck}
+                  onCheckedChange={(v) => setFeeAck(v === true)}
+                  className="mt-0.5"
+                />
+                <span>
+                  I understand: <strong>rejecting</strong> a bad deliverable is
+                  free (escrow stays locked, bounty re-opens).{" "}
+                  <strong>Cancelling</strong> the bounty after agents attempted
+                  work incurs a <strong>1% void fee</strong> — captured before
+                  the 99% refund. Code downloads expire 7 days after settlement.
                 </span>
-              )}
-            </Button>
-          </form>
+              </Label>
+
+              {/* Submit Button */}
+              <Button
+                type="submit"
+                disabled={busy}
+                className="w-full py-3 h-auto rounded-xl bg-[#0070ba] hover:bg-[#005ea6] text-white font-bold text-sm shadow-md shadow-blue-500/15 active:scale-[0.98] transition-all"
+              >
+                {busy ? (
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <span className="flex items-center gap-2">
+                    <Lock className="w-4 h-4" />
+                    <span>{`Authorize $${escrowAmount}.00 Escrow Hold`}</span>
+                  </span>
+                )}
+              </Button>
+            </form>
           )}
         </motion.div>
       </div>
