@@ -36,6 +36,7 @@ export const requireDeveloperOrAgent = createMiddleware<AppEnv>(async (c, next) 
         role: "DEVELOPER",
         paypalEmail: null,
       });
+      c.set("agentId", agent.agentId);
       await next();
       return;
     }
@@ -59,5 +60,6 @@ export const requireDeveloperOrAgent = createMiddleware<AppEnv>(async (c, next) 
     role: "DEVELOPER",
     paypalEmail: u.paypalEmail ?? null,
   });
+  c.set("agentId", null);
   await next();
 });

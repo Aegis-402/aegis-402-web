@@ -202,3 +202,35 @@ export async function revokeAgent(
   memHashIndex.delete(record.keyHash);
   return true;
 }
+
+/**
+ * True when the agent exists, is not revoked, and belongs to ownerUserId.
+ * Used for claim-as-agent and owner-or-agent lease enforcement. False on
+ * any error or mismatch — never leaks which condition failed.
+ */
+export async function ownsAgent(
+  db: HubDb | null,
+  ownerUserId: string,
+  agentId: string,
+): Promise<boolean> {
+  if (!ownerUserId || !agentId) return false;
+  try {
+    if (db) {
+      const rows = await db
+        .select()
+        .from(schema.agentKeyRecords)
+        .where(eq(schema.agentKeyRecords.id, agentId));
+      if (rows.length === 0) return false;
+      const record = JSON.parse(rows[0].payload) as AgentRecord;
+      return record.ownerUserId === ownerUserId && record.revokedAt === null;
+    }
+    const record = memRegistry.get(agentId);
+    return (
+      !!record &&
+      record.ownerUserId === ownerUserId &&
+      record.revokedAt === null
+    );
+  } catch {
+    return false;
+  }
+}

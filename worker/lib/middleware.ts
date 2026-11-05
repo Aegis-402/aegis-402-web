@@ -13,7 +13,11 @@ export interface AuthUser {
 
 export type AppEnv = {
   Bindings: Env;
-  Variables: { user: AuthUser };
+  Variables: {
+    user: AuthUser;
+    /** Registry agent id for x-agent-key callers, null for human sessions. */
+    agentId: string | null;
+  };
 };
 
 /** Resolves the Better Auth session from cookies; 401 if missing/invalid. */

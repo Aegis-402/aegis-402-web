@@ -7,6 +7,7 @@ import {
   mintAgentKey,
   listAgents,
   revokeAgent,
+  ownsAgent,
 } from "./lib/agent-keys.ts";
 import { eq, inArray } from "drizzle-orm";
 import * as schema from "./db/schema.ts";
@@ -285,17 +286,30 @@ app.post("/api/bounties/:id/claim", requireDeveloperOrAgent, async (c) => {
   const leaseToken = `lease-${Math.random().toString(36).substring(2, 10)}`;
   const expiresAt = Date.now() + 30 * 60 * 1000;
 
+  // Agent-only claiming: bare human accounts cannot hold leases.
+  // x-agent-key callers claim as themselves; human sessions must name one
+  // of their registered agents (ownsAgent = exists, unrevoked, owned).
+  const callerAgentId = c.get("agentId");
+  let leaseAgentId: string;
+  if (callerAgentId) {
+    leaseAgentId = callerAgentId;
+  } else {
+    const requested = body.data.agentId?.trim();
+    if (!requested) {
+      return c.json({ error: "Claiming requires a registered agent — pass agentId of one of your agents" }, 400);
+    }
+    if (!(await ownsAgent(db, c.get("user").id, requested))) {
+      return c.json({ error: "Unknown agent, revoked key, or agent not owned by you" }, 403);
+    }
+    leaseAgentId = requested;
+  }
+
   bounty.status = "IN_PROGRESS";
-  // Server-resolved identity: never trust the client-supplied display label.
-  // c.get("user").id is the registry agent id (agent-...) for x-agent-key
-  // callers, or the human user id for session callers. body.agentId is
-  // informational only and intentionally ignored.
-  void body;
-  bounty.workerAgentId = c.get("user").id;
-  bounty.workerUserId = c.get("user").id;
+  bounty.workerAgentId = leaseAgentId;
+  bounty.workerUserId = leaseAgentId;
   bounty.claimCount = (bounty.claimCount || 0) + 1;
   const seen = new Set(bounty.workerHistory || []);
-  seen.add(c.get("user").id);
+  seen.add(leaseAgentId);
   bounty.workerHistory = Array.from(seen);
   bounty.rejectionReason = undefined;
   bounty.leaseToken = leaseToken;
@@ -304,6 +318,7 @@ app.post("/api/bounties/:id/claim", requireDeveloperOrAgent, async (c) => {
 
   return c.json({
     bountyId: bounty.id,
+    agentId: leaseAgentId,
     leaseToken,
     expiresAt,
     status: "ACTIVE",
@@ -317,7 +332,12 @@ app.post("/api/bounties/:id/checkpoints", requireDeveloperOrAgent, async (c) => 
   const bounty = await getBountyRecord(db, id);
   if (!bounty) return c.json({ error: "Bounty not found" }, 404);
   if (bounty.status !== "IN_PROGRESS") return c.json({ error: "Bounty has no active lease" }, 409);
-  if (bounty.workerUserId && bounty.workerUserId !== c.get("user").id) {
+  const leaseHolder = c.get("user").id;
+  if (
+    bounty.workerUserId &&
+    bounty.workerUserId !== leaseHolder &&
+    !(await ownsAgent(db, leaseHolder, bounty.workerUserId))
+  ) {
     return c.json({ error: "You do not hold the lease on this bounty" }, 403);
   }
 
@@ -349,7 +369,12 @@ app.post("/api/bounties/:id/deliver", requireDeveloperOrAgent, async (c) => {
   const bounty = await getBountyRecord(db, id);
   if (!bounty) return c.json({ error: "Bounty not found" }, 404);
   if (bounty.status !== "IN_PROGRESS") return c.json({ error: "Bounty has no active lease" }, 409);
-  if (bounty.workerUserId && bounty.workerUserId !== c.get("user").id) {
+  const leaseHolder = c.get("user").id;
+  if (
+    bounty.workerUserId &&
+    bounty.workerUserId !== leaseHolder &&
+    !(await ownsAgent(db, leaseHolder, bounty.workerUserId))
+  ) {
     return c.json({ error: "You do not hold the lease on this bounty" }, 403);
   }
 
@@ -382,7 +407,12 @@ app.post("/api/bounties/:id/artifact", requireDeveloperOrAgent, async (c) => {
   const bounty = await getBountyRecord(db, id);
   if (!bounty) return c.json({ error: "Bounty not found" }, 404);
   if (bounty.status !== "IN_PROGRESS") return c.json({ error: "Bounty has no active lease" }, 409);
-  if (bounty.workerUserId && bounty.workerUserId !== c.get("user").id) {
+  const leaseHolder = c.get("user").id;
+  if (
+    bounty.workerUserId &&
+    bounty.workerUserId !== leaseHolder &&
+    !(await ownsAgent(db, leaseHolder, bounty.workerUserId))
+  ) {
     return c.json({ error: "You do not hold the lease on this bounty" }, 403);
   }
 

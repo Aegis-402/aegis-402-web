@@ -14,7 +14,7 @@ import { AuthScreen, type UserSession } from "./components/AuthScreen";
 import { authClient } from "./lib/auth-client";
 import { DashboardScreen } from "./components/DashboardScreen";
 import { Toaster, toast } from "sonner";
-import { AlertCircle, ArrowRight } from "lucide-react";
+import { AlertCircle, ArrowRight, Bot, X } from "lucide-react";
 import { PayPalProvider } from "@paypal/react-paypal-js/sdk-v6";
 import type { Bounty } from "./types";
 export type { Bounty };
@@ -264,12 +264,28 @@ export function App() {
     setIsReviewerOpen(true);
   };
 
-  const handleClaimBounty = async (bountyId: string) => {
+  interface ClaimAgent {
+    id: string;
+    name: string;
+    framework: string;
+  }
+
+  // Agent picker for claiming: leases belong to registered agents, never to
+  // bare human accounts. 0 agents → fleet; 1 → direct; >1 → picker modal.
+  const [claimPicker, setClaimPicker] = useState<{
+    bountyId: string;
+    agents: ClaimAgent[];
+  } | null>(null);
+  const [claimPickerSelection, setClaimPickerSelection] = useState<string>("");
+  const [claimingAgentId, setClaimingAgentId] = useState<string | null>(null);
+
+  const doClaimBounty = async (bountyId: string, agent: ClaimAgent) => {
+    setClaimingAgentId(agent.id);
     try {
       const res = await fetch(`/api/bounties/${bountyId}/claim`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ agentId: "agent-interactive-tester" }),
+        body: JSON.stringify({ agentId: agent.id }),
       });
       if (!res.ok) {
         const err = (await res.json().catch(() => ({}))) as { error?: string };
@@ -282,17 +298,141 @@ export function App() {
             ? {
                 ...b,
                 status: "IN_PROGRESS",
-                workerAgentId: "agent-interactive-tester",
+                workerAgentId: data.agentId || agent.id,
                 leaseExpiresAt: data.expiresAt,
               }
             : b
         )
       );
-      toast.success("30-minute lease claimed on bounty!");
+      toast.success(`30-minute lease claimed for ${agent.name}!`);
+    } catch (err) {
+      toast.error(`Failed to claim bounty: ${(err as Error).message}`);
+    } finally {
+      setClaimingAgentId(null);
+      setClaimPicker(null);
+    }
+  };
+
+  const handleClaimBounty = async (bountyId: string) => {
+    try {
+      const listRes = await fetch("/api/agents");
+      if (listRes.status === 401) {
+        toast.info("Sign in as a developer to claim bounties.");
+        navigateTo("auth");
+        return;
+      }
+      if (listRes.status === 403) {
+        toast.error("Only developer accounts can claim bounties.");
+        return;
+      }
+      if (!listRes.ok) throw new Error(`HTTP ${listRes.status}`);
+      const list = (await listRes.json()) as Array<{
+        id: string;
+        name: string;
+        framework: string;
+        revoked?: boolean;
+      }>;
+      const usable = list.filter((a) => !a.revoked);
+      if (usable.length === 0) {
+        toast.info("Register an agent first — only registered agents can hold leases.");
+        navigateTo("dashboard", "?tab=fleet");
+        return;
+      }
+      if (usable.length === 1) {
+        await doClaimBounty(bountyId, usable[0]);
+        return;
+      }
+      setClaimPickerSelection(usable[0].id);
+      setClaimPicker({ bountyId, agents: usable });
     } catch (err) {
       toast.error(`Failed to claim bounty: ${(err as Error).message}`);
     }
   };
+
+  // Esc closes the agent picker.
+  useEffect(() => {
+    if (!claimPicker) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setClaimPicker(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [claimPicker]);
+
+  const claimPickerModal = claimPicker && (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Select agent to claim lease"
+    >
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={() => setClaimPicker(null)}
+      />
+      <div className="relative w-full max-w-sm rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0c0c0e] p-5 shadow-xl">
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-base font-medium tracking-tight">Select agent</h2>
+          <button
+            type="button"
+            onClick={() => setClaimPicker(null)}
+            aria-label="Close"
+            className="w-7 h-7 rounded-md border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-500 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-4">
+          Leases belong to agents. Which of yours takes this bounty?
+        </p>
+        <div className="flex flex-col gap-2 mb-4">
+          {claimPicker.agents.map((a) => {
+            const selected = claimPickerSelection === a.id;
+            return (
+              <button
+                key={a.id}
+                type="button"
+                onClick={() => setClaimPickerSelection(a.id)}
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-md border text-left transition-colors cursor-pointer ${
+                  selected
+                    ? "border-zinc-950 dark:border-white bg-zinc-50 dark:bg-zinc-900"
+                    : "border-zinc-200 dark:border-zinc-800 hover:border-zinc-400 dark:hover:border-zinc-600"
+                }`}
+              >
+                <Bot className="w-4 h-4 shrink-0 text-zinc-500" />
+                <span className="min-w-0">
+                  <span className="block text-sm font-medium truncate">{a.name}</span>
+                  <span className="block text-sm font-mono text-zinc-500 truncate">
+                    {a.framework} · {a.id}
+                  </span>
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 justify-end">
+          <button
+            type="button"
+            onClick={() => setClaimPicker(null)}
+            className="px-3.5 py-1.5 rounded-md border border-zinc-200 dark:border-zinc-800 text-sm font-mono text-zinc-600 dark:text-zinc-400 hover:text-zinc-950 dark:hover:text-white hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={claimingAgentId !== null}
+            onClick={() => {
+              const agent = claimPicker.agents.find((a) => a.id === claimPickerSelection);
+              if (agent) void doClaimBounty(claimPicker.bountyId, agent);
+            }}
+            className="px-3.5 py-1.5 rounded-md bg-zinc-950 dark:bg-white text-white dark:text-black text-sm font-mono hover:opacity-90 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-wait"
+          >
+            {claimingAgentId ? "Claiming…" : "Claim 30m lease"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   const handleBountySettled = (bountyId: string) => {
     setBounties((prev) =>
@@ -416,6 +556,7 @@ export function App() {
           onClose={() => setIsPostBountyOpen(false)}
           onBountyCreated={handleBountyCreated}
         />
+        {claimPickerModal}
       </div>
     );
   }
@@ -558,6 +699,7 @@ export function App() {
         onClose={() => setIsPostBountyOpen(false)}
         onBountyCreated={handleBountyCreated}
       />
+      {claimPickerModal}
     </div>
   );
 }
