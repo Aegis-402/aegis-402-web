@@ -107,14 +107,12 @@ export function AuthScreen({
           : await authClient.signIn.email({ email: email.trim(), password });
 
       if (result.error || !result.data?.user) {
-        if (import.meta.env.DEV) {
-          // eslint-disable-next-line no-console
-          console.debug("[Aegis-Auth] auth failed", {
-            mode,
-            error: result.error?.message ?? null,
-            hasUser: !!result.data?.user,
-          });
-        }
+        // eslint-disable-next-line no-console
+        console.debug("[Aegis-Auth] auth failed", {
+          mode,
+          error: result.error?.message ?? null,
+          hasUser: !!result.data?.user,
+        });
         toast.error(result.error?.message || "Authentication failed. Please try again.");
         return;
       }
@@ -135,14 +133,12 @@ export function AuthScreen({
       };
 
       toast.success(mode === "signup" ? "Account created successfully!" : "Signed in successfully!");
-      if (import.meta.env.DEV) {
-        // eslint-disable-next-line no-console
-        console.debug("[Aegis-Auth] auth resolved, handing to App", {
-          mode,
-          id: u.id,
-          email: u.email,
-        });
-      }
+      // eslint-disable-next-line no-console
+      console.debug("[Aegis-Auth] auth resolved, handing to App", {
+        mode,
+        id: u.id,
+        email: u.email,
+      });
       onAuthenticated(sessionUser);
     } catch {
       toast.error("Authentication failed. Please try again.");

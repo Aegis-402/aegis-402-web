@@ -46,10 +46,10 @@ function getScreenFromPath(): "landing" | "auth" | "dashboard" {
 const AUTH_SESSION_GRACE_MS = 5000;
 
 function navDebug(...args: unknown[]) {
-  if (import.meta.env.DEV) {
-    // eslint-disable-next-line no-console
-    console.debug("[Aegis-Nav]", ...args);
-  }
+  // Ungated by design: the auth race reproduces on deployed builds, where
+  // import.meta.env.DEV is false. Strip before demo recording.
+  // eslint-disable-next-line no-console
+  console.debug("[Aegis-Nav]", ...args);
 }
 
 export function App() {
