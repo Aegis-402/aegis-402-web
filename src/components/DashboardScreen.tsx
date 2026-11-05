@@ -72,10 +72,9 @@ const CONFIG_CLIENT_LABEL: Record<ConfigClient, string> = {
   opencode: "OpenCode",
 };
 
-/** IDE/MCP client config snippet for a given client. Local-only install (not
- *  published): `npm install -g ./aegis-402-mcp`, then the `aegis-mcp` binary.
- *  No key in the config — the agent saves it to the key file (bootstrap prompt
- *  step 0b) and the server loads it automatically. */
+/** IDE/MCP client config snippet for a given client. Command-only — the hub is
+ *  baked into the `aegis-mcp` binary and the key lives in the agent's key file.
+ *  No env, no key in the config (the agent saves it via the bootstrap prompt). */
 function configSnippetFor(client: ConfigClient, _key: string): string {
   if (client === "cursor") {
     return JSON.stringify(
@@ -120,7 +119,33 @@ function configSnippetFor(client: ConfigClient, _key: string): string {
 
 /** Copy-paste bootstrap prompt so any model can self-configure as a worker.
  *  MCP-first: the tools + SKILL.md are the source of truth, never endpoint URLs. */
-function bootstrapPromptFor(agentName: string, key: string, hubUrl: string): string {
+type KeyOs = "unix" | "powershell" | "gitbash";
+
+const KEY_OS_LABEL: Record<KeyOs, string> = {
+  unix: "macOS / Linux",
+  powershell: "Windows PowerShell",
+  gitbash: "Windows Git Bash",
+};
+
+/** Key-file setup command for the agent's OS. Same two files everywhere:
+ *  ~/.aegis/key (the secret) + ~/.aegis/agent-name. Unix shell one-liner,
+ *  PowerShell equivalent (icacls lockdown is best-effort), Git Bash = unix. */
+function keySaveCommandFor(os: KeyOs, key: string, agentName: string): string {
+  if (os === "powershell") {
+    return `New-Item -ItemType Directory -Force -Path "$HOME\\.aegis" | Out-Null; Set-Content -Path "$HOME\\.aegis\\key" -Value '${key}' -NoNewline; Set-Content -Path "$HOME\\.aegis\\agent-name" -Value '${agentName}' -NoNewline; icacls "$HOME\\.aegis\\key" /inheritance:r /grant:r "$($env:USERNAME):(R,W)" | Out-Null`;
+  }
+  return `mkdir -p ~/.aegis && printf '%s' '${key}' > ~/.aegis/key && chmod 600 ~/.aegis/key && echo '${agentName}' > ~/.aegis/agent-name`;
+}
+
+/** Per-bounty workspace setup for the agent's OS. */
+function workspaceCommandFor(os: KeyOs): string {
+  if (os === "powershell") {
+    return `New-Item -ItemType Directory -Force -Path "aegis-bounties\\<BOUNTY_ID>" | Out-Null; Set-Location "aegis-bounties\\<BOUNTY_ID>"`;
+  }
+  return `mkdir -p aegis-bounties/<BOUNTY_ID> && cd aegis-bounties/<BOUNTY_ID>`;
+}
+
+function bootstrapPromptFor(agentName: string, key: string, hubUrl: string, os: KeyOs): string {
   return [
     `You are ${agentName}, an autonomous worker on Aegis-402 (zero-trust software escrow).`,
     ``,
@@ -129,10 +154,10 @@ function bootstrapPromptFor(agentName: string, key: string, hubUrl: string): str
     `   All workflow knowledge lives in the MCP tools + the worker skill — read it first with the aegis_get_skill tool, then follow it.`,
     ``,
     `0b. SAVE THE KEY (once, before anything else — shown only once, never in MCP config):`,
-    `   mkdir -p ~/.aegis && printf '%s' '${key}' > ~/.aegis/key && chmod 600 ~/.aegis/key && echo '${agentName}' > ~/.aegis/agent-name`,
-    `   The MCP server loads this file automatically on every call (no restart, no key in MCP config). Never commit it, never put it in a deliverable tarball.`,
+    `   ${keySaveCommandFor(os, key, agentName)}`,
+    `   The MCP server loads this file automatically on every call (no restart, no key in MCP config). Never commit it, never put it in a deliverable tarball.${os === "powershell" ? " PowerShell lockdown is best-effort — prefer WSL/Git Bash if available." : ""}`,
     ``,
-    `1. WORKSPACE: mkdir -p aegis-bounties/<BOUNTY_ID> && cd aegis-bounties/<BOUNTY_ID>.`,
+    `1. WORKSPACE: ${workspaceCommandFor(os)}.`,
     `   Keep AGENTS.md (bounty, escrow, acceptance criteria, checkpoint log) and MEMORY.md (decisions).`,
     `   .aegis-session.json is MCP-managed — never hand-edit it.`,
     ``,
@@ -284,6 +309,9 @@ export function DashboardScreen({
     clientByAgent[agentId] ?? "claude";
   const [copiedPromptId, setCopiedPromptId] = useState<string | null>(null);
   const [promptAgentId, setPromptAgentId] = useState<string | null>(null);
+  // OS of the machine the agent runs on — selects the key/workspace commands
+  // baked into its bootstrap prompt. Defaults to Unix (macOS/Linux/Git Bash).
+  const [keyOs, setKeyOs] = useState<KeyOs>("unix");
 
   useEffect(() => {
     if (!promptAgentId) return;
@@ -418,8 +446,8 @@ export function DashboardScreen({
     setTimeout(() => setCopiedConfigId(null), 2000);
   };
 
-  const handleCopyBootstrapPrompt = (agentId: string, agentName: string, key: string) => {
-    navigator.clipboard.writeText(bootstrapPromptFor(agentName, key, window.location.origin));
+  const handleCopyBootstrapPrompt = (agentId: string, agentName: string, key: string, os: KeyOs) => {
+    navigator.clipboard.writeText(bootstrapPromptFor(agentName, key, window.location.origin, os));
     setCopiedPromptId(agentId);
     toast.success("Worker bootstrap prompt copied — paste it into any model");
     setTimeout(() => setCopiedPromptId(null), 2000);
@@ -1136,7 +1164,7 @@ export function DashboardScreen({
                                   </button>
                                   <button
                                     onClick={() =>
-                                      handleCopyBootstrapPrompt(agent.id, agent.name, shownKey)
+                                      handleCopyBootstrapPrompt(agent.id, agent.name, shownKey, keyOs)
                                     }
                                     className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
                                   >
@@ -1191,9 +1219,25 @@ export function DashboardScreen({
                             Bootstrap prompt — {promptAgent.name}
                           </span>
                           <div className="flex items-center gap-2">
+                            <div className="inline-flex rounded border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 p-0.5" role="group" aria-label="Agent OS">
+                              {(Object.keys(KEY_OS_LABEL) as KeyOs[]).map((os) => (
+                                <button
+                                  key={os}
+                                  type="button"
+                                  onClick={() => setKeyOs(os)}
+                                  className={`px-2 py-0.5 rounded text-[11px] font-mono transition-colors cursor-pointer ${
+                                    keyOs === os
+                                      ? "bg-zinc-950 dark:bg-white text-white dark:text-black"
+                                      : "text-zinc-500 hover:text-zinc-950 dark:hover:text-white"
+                                  }`}
+                                >
+                                  {KEY_OS_LABEL[os]}
+                                </button>
+                              ))}
+                            </div>
                             <button
                               onClick={() =>
-                                handleCopyBootstrapPrompt(promptAgent.id, promptAgent.name, promptKey)
+                                handleCopyBootstrapPrompt(promptAgent.id, promptAgent.name, promptKey, keyOs)
                               }
                               className="flex items-center gap-1 px-2 py-1 rounded border border-zinc-200 dark:border-zinc-700 hover:border-zinc-300 dark:hover:border-zinc-600 text-zinc-700 dark:text-zinc-300 text-[11px] font-mono transition-colors cursor-pointer"
                             >
@@ -1219,7 +1263,7 @@ export function DashboardScreen({
                           </div>
                         </div>
                         <pre className="p-4 overflow-y-auto font-mono text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                          {bootstrapPromptFor(promptAgent.name, promptKey, window.location.origin)}
+                          {bootstrapPromptFor(promptAgent.name, promptKey, window.location.origin, keyOs)}
                         </pre>
                       </div>
                     </div>
