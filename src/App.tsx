@@ -19,15 +19,18 @@ import { PayPalProvider } from "@paypal/react-paypal-js/sdk-v6";
 import type { Bounty } from "./types";
 export type { Bounty };
 
-const PAYPAL_CLIENT_ID = (import.meta as any).env?.VITE_PAYPAL_CLIENT_ID || "";
-
 // Strict-live: no frontend seed data. Empty until /api/bounties resolves.
 const initialBounties: Bounty[] = [];
 
 function getScreenFromPath(): "landing" | "auth" | "dashboard" {
   if (typeof window === "undefined") return "landing";
   const path = window.location.pathname.toLowerCase();
-  if (path === "/auth" || path === "/login" || path === "/signup" || path === "/register") {
+  if (
+    path === "/auth" ||
+    path === "/login" ||
+    path === "/signup" ||
+    path === "/register"
+  ) {
     return "auth";
   }
   if (path === "/dashboard") {
@@ -41,13 +44,18 @@ export function App() {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("theme");
       if (saved === "dark" || saved === "light") return saved;
-      return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches
+        ? "dark"
+        : "light";
     }
     return "dark"; // Default to dark monochrome
   });
 
-  const [currentScreen, setCurrentScreen] = useState<"landing" | "auth" | "dashboard">(getScreenFromPath);
-  const { data: authSession, isPending: isSessionPending } = authClient.useSession();
+  const [currentScreen, setCurrentScreen] = useState<
+    "landing" | "auth" | "dashboard"
+  >(getScreenFromPath);
+  const { data: authSession, isPending: isSessionPending } =
+    authClient.useSession();
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
 
   // The server session (httpOnly cookie) is the single source of truth for who is signed in.
@@ -73,14 +81,20 @@ export function App() {
     });
   }, [authSession, isSessionPending]);
 
-  const navigateTo = (screen: "landing" | "auth" | "dashboard", search = "") => {
+  const navigateTo = (
+    screen: "landing" | "auth" | "dashboard",
+    search = ""
+  ) => {
     const pathMap: Record<"landing" | "auth" | "dashboard", string> = {
       landing: "/",
       auth: "/auth",
       dashboard: "/dashboard",
     };
     const targetPath = pathMap[screen] + search;
-    if (typeof window !== "undefined" && window.location.pathname + window.location.search !== targetPath) {
+    if (
+      typeof window !== "undefined" &&
+      window.location.pathname + window.location.search !== targetPath
+    ) {
       window.history.pushState({ screen }, "", targetPath);
     }
     setCurrentScreen(screen);
@@ -161,7 +175,8 @@ export function App() {
   const filterCounts = {
     ALL: bounties.length,
     IN_PROGRESS: bounties.filter((b) => b.status === "IN_PROGRESS").length,
-    OPEN_FOR_CLAIM: bounties.filter((b) => b.status === "OPEN_FOR_CLAIM").length,
+    OPEN_FOR_CLAIM: bounties.filter((b) => b.status === "OPEN_FOR_CLAIM")
+      .length,
     SETTLED: bounties.filter((b) => b.status === "SETTLED").length,
   };
 
@@ -174,7 +189,10 @@ export function App() {
   });
 
   const handleOpenReviewer = (bounty?: Bounty) => {
-    const target = bounty || bounties.find((b) => b.status === "READY_FOR_REVIEW") || bounties[0];
+    const target =
+      bounty ||
+      bounties.find((b) => b.status === "READY_FOR_REVIEW") ||
+      bounties[0];
     setSelectedBounty(target);
     setIsReviewerOpen(true);
   };
@@ -194,7 +212,12 @@ export function App() {
       setBounties((prev) =>
         prev.map((b) =>
           b.id === bountyId
-            ? { ...b, status: "IN_PROGRESS", workerAgentId: "agent-interactive-tester", leaseExpiresAt: data.expiresAt }
+            ? {
+                ...b,
+                status: "IN_PROGRESS",
+                workerAgentId: "agent-interactive-tester",
+                leaseExpiresAt: data.expiresAt,
+              }
             : b
         )
       );
@@ -271,9 +294,19 @@ export function App() {
     if (isSessionPending || !currentUser) {
       return (
         <div className="min-h-screen bg-white dark:bg-[#09090b] text-zinc-950 dark:text-zinc-100 flex flex-col items-center justify-center gap-3 transition-colors">
-          <img src="/aegis-402-logo-black.svg" alt="Aegis-402" className="w-8 h-8 dark:hidden animate-pulse" />
-          <img src="/aegis-402-logo-white.svg" alt="Aegis-402" className="w-8 h-8 hidden dark:block animate-pulse" />
-          <p className="text-sm font-mono text-zinc-500 dark:text-zinc-400">Restoring session…</p>
+          <img
+            src="/aegis-402-logo-black.svg"
+            alt="Aegis-402"
+            className="w-8 h-8 dark:hidden animate-pulse"
+          />
+          <img
+            src="/aegis-402-logo-white.svg"
+            alt="Aegis-402"
+            className="w-8 h-8 hidden dark:block animate-pulse"
+          />
+          <p className="text-sm font-mono text-zinc-500 dark:text-zinc-400">
+            Restoring session…
+          </p>
         </div>
       );
     }
@@ -346,7 +379,10 @@ export function App() {
         <WhyAegisSection onOpenPostBounty={handleOpenPostBounty} />
 
         {/* Section 6: Live Bounty Marketplace */}
-        <section id="marketplace" className="py-20 max-w-6xl mx-auto px-4 sm:px-6">
+        <section
+          id="marketplace"
+          className="py-20 max-w-6xl mx-auto px-4 sm:px-6"
+        >
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
             <div>
               <div className="text-sm font-mono uppercase tracking-widest text-zinc-500 mb-1.5 flex items-center gap-2">
@@ -357,7 +393,8 @@ export function App() {
                 </span>
               </div>
               <h2 className="text-2xl sm:text-3xl font-normal tracking-tight text-zinc-950 dark:text-white">
-                Active Bounties with <span className="font-bold">Locked PayPal Escrow</span>
+                Active Bounties with{" "}
+                <span className="font-bold">Locked PayPal Escrow</span>
               </h2>
             </div>
 
@@ -369,7 +406,8 @@ export function App() {
                 { id: "OPEN_FOR_CLAIM", label: "Open Claims" },
                 { id: "SETTLED", label: "Settled" },
               ].map((f) => {
-                const count = filterCounts[f.id as keyof typeof filterCounts] ?? 0;
+                const count =
+                  filterCounts[f.id as keyof typeof filterCounts] ?? 0;
                 return (
                   <button
                     key={f.id}
@@ -419,7 +457,9 @@ export function App() {
           ) : (
             <div className="rounded-md border border-dashed border-zinc-200 dark:border-zinc-800 p-12 text-center">
               <AlertCircle className="w-6 h-6 text-zinc-400 mx-auto mb-2" />
-              <div className="text-sm text-zinc-600 dark:text-zinc-400">No bounties in this category</div>
+              <div className="text-sm text-zinc-600 dark:text-zinc-400">
+                No bounties in this category
+              </div>
             </div>
           )}
         </section>
@@ -445,10 +485,9 @@ export function App() {
 }
 
 export default function WrappedApp() {
-  if (!PAYPAL_CLIENT_ID) return <App />;
   return (
     <PayPalProvider
-      clientId={PAYPAL_CLIENT_ID}
+      clientId="BAA3Al1Iue_hLbdvuCxl4bVsPZJRDFRQdWJ9-XbENzDzzag2DzY8gtbeDkDpUAO-s5OHB3tN3fUqOlYE8Y"
       environment="sandbox"
       components={["paypal-payments"]}
       pageType="checkout"

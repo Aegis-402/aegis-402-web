@@ -11,12 +11,13 @@ import type { AppEnv } from "./middleware.ts";
  *  1. Per-agent key (`aegis_sec_...` minted via POST /api/agents) in the
  *     `x-agent-key` header → identity = that registered agent.
  *     Lease ownership is enforced per agent id downstream.
- *  2. Legacy `AGENT_API_KEY` bootstrap secret (demo fallback) → synthetic
- *     shared DEVELOPER identity. Remove after migrating to per-agent keys.
- *  3. A normal Better Auth session cookie with role DEVELOPER (humans).
+ *  2. A normal Better Auth session cookie with role DEVELOPER (humans).
+ *
+ * No shared bootstrap secret: every worker registers its own agent in the
+ * dashboard (revokable per agent, attributable per lease). Unknown or
+ * revoked keys get 401, never a synthetic shared identity.
  */
 export const requireDeveloperOrAgent = createMiddleware<AppEnv>(async (c, next) => {
-  const envMap = c.env as unknown as Record<string, string | undefined>;
   const provided = c.req.header("x-agent-key");
 
   // 1. Per-agent key (registered via dashboard)
@@ -41,21 +42,7 @@ export const requireDeveloperOrAgent = createMiddleware<AppEnv>(async (c, next) 
     return c.json({ error: "Invalid or revoked agent key" }, 401);
   }
 
-  // 2. Legacy bootstrap service key (demo fallback)
-  const expected = envMap.AGENT_API_KEY;
-  if (expected && provided && provided === expected) {
-    c.set("user", {
-      id: "agent-mcp-service",
-      email: "agent@aegis-402.local",
-      name: "MCP Service Agent",
-      role: "DEVELOPER",
-      paypalEmail: null,
-    });
-    await next();
-    return;
-  }
-
-  // Fall back to human session auth
+  // Human session auth (DEVELOPER role only)
   const auth = createAuth(c.env as never, c.req.url);
   const session = await auth.api.getSession({ headers: c.req.raw.headers });
   if (!session?.user) {

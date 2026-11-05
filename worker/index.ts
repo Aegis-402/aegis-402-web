@@ -151,10 +151,7 @@ app.get("/api/bounties/:id/openapi", async (c) => {
       ok = (await validateAgentKey(null, provided)) !== null;
     }
     if (!ok) {
-      const envMap = c.env as unknown as Record<string, string | undefined>;
-      if (!(envMap.AGENT_API_KEY && provided === envMap.AGENT_API_KEY)) {
-        return c.json({ error: "Invalid or revoked agent key" }, 401);
-      }
+      return c.json({ error: "Invalid or revoked agent key" }, 401);
     }
   } else {
     // 2. Human session path (any role).
