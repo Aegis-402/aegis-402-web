@@ -8,7 +8,7 @@
  * PayPal email. The platform cut stays in business automatically.
  */
 
-import type { PayPalEnv } from "./paypal.ts";
+import { PAYPAL_CLIENT_ID, type PayPalEnv } from "./paypal.ts";
 
 export type { PayPalEnv };
 
@@ -23,7 +23,7 @@ function apiBase(env: PayPalEnv): string {
 
 async function getAccessToken(env: PayPalEnv): Promise<string> {
   const base = apiBase(env);
-  const creds = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+  const creds = btoa(`${PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
   const res = await fetch(`${base}/v1/oauth2/token`, {
     method: "POST",
     headers: {

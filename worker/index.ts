@@ -30,7 +30,7 @@ import {
   recordInvoicePayment,
 } from "./lib/invoices.ts";
 import {
-  paypalConfigured,
+  PAYPAL_CLIENT_ID,
   createAuthorizeOrder,
   authorizeOrder,
   getAuthorizationStatus,
@@ -101,7 +101,7 @@ app.get("/api/health", (c) => {
 app.get("/api/public-config", async (c) => {
   const envMap = c.env as unknown as Record<string, string | undefined>;
   return c.json({
-    paypalClientId: envMap.PAYPAL_CLIENT_ID || "",
+    paypalClientId: PAYPAL_CLIENT_ID,
     arbiterWsUrl: envMap.ARBITER_WS_URL || "wss://aegis-arbiter-t.ayiba.dev/screencast",
     agStudioLicenseKey: envMap.AG_STUDIO_LICENSE_KEY || "",
   });
@@ -451,9 +451,6 @@ app.get("/api/bounties/:id/artifact/download", requireAuth, requireRole("BUYER")
 // Returns orderId + approveLink. Buyer approves in PayPal UI, then calls /authorize-order.
 app.post("/api/paypal/create-order", requireAuth, requireRole("BUYER"), async (c) => {
   const envMap = c.env as unknown as Record<string, string | undefined>;
-  if (!paypalConfigured(envMap)) {
-    return c.json({ error: "PayPal sandbox credentials not configured on server" }, 503);
-  }
   const body = (await c.req.json().catch(() => ({}))) as {
     amountUsd?: number;
     description?: string;
@@ -474,9 +471,6 @@ app.post("/api/paypal/create-order", requireAuth, requireRole("BUYER"), async (c
 // PayPal Orders v2: authorize an approved order → returns authorizationId (the lock)
 app.post("/api/paypal/authorize-order", requireAuth, requireRole("BUYER"), async (c) => {
   const envMap = c.env as unknown as Record<string, string | undefined>;
-  if (!paypalConfigured(envMap)) {
-    return c.json({ error: "PayPal sandbox credentials not configured on server" }, 503);
-  }
   const body = (await c.req.json().catch(() => ({}))) as { orderId?: string };
   if (!body.orderId) return c.json({ error: "orderId is required" }, 400);
   try {
@@ -507,9 +501,6 @@ app.post("/api/bounties/:id/capture", requireAuth, requireRole("BUYER"), async (
   const authId = bounty.payPalAuthorizationId || "";
 
   // Strict-live: no mock fallback. Demo or unconfigured bounties fail loudly.
-  if (!paypalConfigured(envMap)) {
-    return c.json({ error: "PayPal sandbox credentials not configured on server" }, 503);
-  }
   if (!authId || authId.startsWith("AUTH-")) {
     return c.json({ error: "Bounty has no live PayPal lock — demo bounties cannot settle" }, 422);
   }
@@ -659,9 +650,6 @@ app.post("/api/bounties/:id/retry-payout", requireAuth, async (c) => {
   }
 
   const envMap = c.env as unknown as Record<string, string | undefined>;
-  if (!paypalConfigured(envMap)) {
-    return c.json({ error: "PayPal sandbox credentials not configured on server" }, 503);
-  }
   const { developerAmount, platformFee } = splitPayout(bounty.escrowAmount);
   let payoutEmail: string | null = null;
   try {
@@ -774,9 +762,6 @@ app.post("/api/bounties/:id/void", requireAuth, requireRole("BUYER"), async (c) 
   const authId = bounty.payPalAuthorizationId || "";
 
   // Strict-live: no mock fallback.
-  if (!paypalConfigured(envMap)) {
-    return c.json({ error: "PayPal sandbox credentials not configured on server" }, 503);
-  }
   if (!authId || authId.startsWith("AUTH-")) {
     return c.json({ error: "Bounty has no live PayPal lock — demo bounties cannot void" }, 422);
   }
@@ -1238,9 +1223,6 @@ app.get("/api/bounties/:id/escrow-status", async (c) => {
     });
   }
   const envMap = c.env as unknown as Record<string, string | undefined>;
-  if (!paypalConfigured(envMap)) {
-    return c.json({ ...base, verified: false, mode: "UNCONFIGURED", note: "PayPal credentials not configured on server." });
-  }
   try {
     const live = await getAuthorizationStatus(envMap, authId);
     return c.json({

@@ -12,16 +12,20 @@
  */
 
 export interface PayPalEnv {
-  PAYPAL_CLIENT_ID?: string;
   PAYPAL_CLIENT_SECRET?: string;
   PAYPAL_API_BASE?: string;
 }
 
-const DEFAULT_SANDBOX_BASE = "https://api-m.sandbox.paypal.com";
+/**
+ * PayPal REST app client ID — hardcoded by design. This is a public value
+ * (it ships in the frontend SDK bundle anyway); single supply point for the
+ * whole codebase, mirroring the SDK key in src/App.tsx. Only the SECRET
+ * stays in worker env/secrets — never in the repo.
+ */
+export const PAYPAL_CLIENT_ID =
+  "BAA3Al1Iue_hLbdvuCxl4bVsPZJRDFRQdWJ9-XbENzDzzag2DzY8gtbeDkDpUAO-s5OHB3tN3fUqOlYE8Y";
 
-export function paypalConfigured(env: PayPalEnv): boolean {
-  return Boolean(env.PAYPAL_CLIENT_ID && env.PAYPAL_CLIENT_SECRET);
-}
+const DEFAULT_SANDBOX_BASE = "https://api-m.sandbox.paypal.com";
 
 function apiBase(env: PayPalEnv): string {
   return (env.PAYPAL_API_BASE || DEFAULT_SANDBOX_BASE).replace(/\/$/, "");
@@ -29,7 +33,7 @@ function apiBase(env: PayPalEnv): string {
 
 async function getAccessToken(env: PayPalEnv): Promise<string> {
   const base = apiBase(env);
-  const creds = btoa(`${env.PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
+  const creds = btoa(`${PAYPAL_CLIENT_ID}:${env.PAYPAL_CLIENT_SECRET}`);
   const res = await fetch(`${base}/v1/oauth2/token`, {
     method: "POST",
     headers: {
