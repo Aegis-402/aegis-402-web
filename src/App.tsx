@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Navbar } from "./components/Navbar";
 import { HeroSection } from "./components/HeroSection";
 import { TrustBar } from "./components/TrustBar";
@@ -39,6 +39,19 @@ function getScreenFromPath(): "landing" | "auth" | "dashboard" {
   return "landing";
 }
 
+// Post-auth grace window: after sign-up/sign-in the client session atom lags
+// navigation by >=10ms + a GET /get-session round-trip (better-auth fires its
+// refetch signal inside a setTimeout). While grace is active the dashboard
+// guard holds instead of bouncing back to /auth.
+const AUTH_SESSION_GRACE_MS = 5000;
+
+function navDebug(...args: unknown[]) {
+  if (import.meta.env.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug("[Aegis-Nav]", ...args);
+  }
+}
+
 export function App() {
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     if (typeof window !== "undefined") {
@@ -54,9 +67,19 @@ export function App() {
   const [currentScreen, setCurrentScreen] = useState<
     "landing" | "auth" | "dashboard"
   >(getScreenFromPath);
-  const { data: authSession, isPending: isSessionPending } =
-    authClient.useSession();
+  const {
+    data: authSession,
+    isPending: isSessionPending,
+    isRefetching: isSessionRefetching,
+    refetch: refetchSession,
+  } = authClient.useSession();
   const [currentUser, setCurrentUser] = useState<UserSession | null>(null);
+
+  // Post-auth grace: set right after sign-up/sign-in succeeds client-side.
+  // The session atom lags by >=10ms + a GET /get-session round-trip, so the
+  // dashboard guard must hold (not bounce) until the store catches up.
+  const [awaitingSession, setAwaitingSession] = useState(false);
+  const authGraceDeadlineRef = useRef(0);
 
   // The server session (httpOnly cookie) is the single source of truth for who is signed in.
   useEffect(() => {
@@ -91,6 +114,7 @@ export function App() {
       dashboard: "/dashboard",
     };
     const targetPath = pathMap[screen] + search;
+    navDebug("navigate", { from: window.location.pathname, to: targetPath });
     if (
       typeof window !== "undefined" &&
       window.location.pathname + window.location.search !== targetPath
@@ -112,13 +136,56 @@ export function App() {
   // Redirect to /auth only AFTER the session has resolved — never during render.
   // (Previously a render-time navigateTo() bounced hard-reloads at /dashboard
   // to /auth before the session cookie could revalidate.)
+  // Post-auth, the session atom lags navigation by >=10ms + a GET round-trip,
+  // so the guard holds while `awaitingSession` grace is active — and a
+  // symmetric forward guard rescues the stranded case (session lands while the
+  // screen is still /auth → push forward to /dashboard).
   useEffect(() => {
+    if (isSessionPending) return;
     // Race-free: read better-auth's answer directly, not the lagging currentUser copy.
     const sessionUser = authSession?.user;
-    if (!isSessionPending && currentScreen === "dashboard" && !sessionUser) {
-      navigateTo("auth");
+    if (sessionUser) {
+      if (awaitingSession) {
+        navDebug("session caught up after auth — releasing grace", {
+          id: (sessionUser as { id?: string }).id,
+        });
+        setAwaitingSession(false);
+      }
+      if (currentScreen === "auth") {
+        navDebug("forward: authenticated on /auth → /dashboard");
+        navigateTo("dashboard");
+      }
+      return;
     }
-  }, [isSessionPending, currentScreen, authSession]);
+    if (currentScreen !== "dashboard") return;
+    if (awaitingSession) {
+      if (Date.now() < authGraceDeadlineRef.current) {
+        navDebug("guard held: awaiting post-auth session", {
+          isRefetching: isSessionRefetching,
+        });
+        return;
+      }
+      navDebug("session grace expired with no session → honest bounce to /auth");
+      setAwaitingSession(false);
+    } else {
+      navDebug("guard: /dashboard without session → /auth");
+    }
+    navigateTo("auth");
+  }, [isSessionPending, isSessionRefetching, currentScreen, authSession, awaitingSession]);
+
+  // Safety net: re-run the guard when the grace window expires, so a failed
+  // session refetch still bounces honestly instead of stranding on /dashboard.
+  // (If the session arrived, `awaitingSession` is already false and this is a no-op.)
+  useEffect(() => {
+    if (!awaitingSession) return;
+    const remaining = Math.max(0, authGraceDeadlineRef.current - Date.now());
+    navDebug("grace timer armed", { remainingMs: remaining });
+    const t = setTimeout(() => {
+      navDebug("grace timer fired — releasing grace");
+      setAwaitingSession(false);
+    }, remaining);
+    return () => clearTimeout(t);
+  }, [awaitingSession]);
 
   const [bounties, setBounties] = useState<Bounty[]>(initialBounties);
   const [activeFilter, setActiveFilter] = useState<string>("ALL");
@@ -244,7 +311,15 @@ export function App() {
   };
 
   const handleAuthenticated = (user: UserSession) => {
+    navDebug("auth success", { email: user.email, role: user.role }, "→ /dashboard, starting session grace");
     setCurrentUser(user);
+    authGraceDeadlineRef.current = Date.now() + AUTH_SESSION_GRACE_MS;
+    setAwaitingSession(true);
+    // Kick the session refetch now instead of waiting on better-auth's
+    // deferred (+10ms) atom signal.
+    void refetchSession().catch((err) => {
+      navDebug("post-auth session refetch failed", err);
+    });
     navigateTo("dashboard");
   };
 
@@ -262,6 +337,9 @@ export function App() {
   };
 
   const handleSignOut = async () => {
+    navDebug("sign out → /landing, clearing session grace");
+    authGraceDeadlineRef.current = 0;
+    setAwaitingSession(false);
     await authClient.signOut();
     setCurrentUser(null);
     navigateTo("landing");
