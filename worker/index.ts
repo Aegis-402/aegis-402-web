@@ -1387,6 +1387,28 @@ app.get("/api/internal/bounties/:id", async (c) => {
 // See: POST /api/bounties/:id/artifact (hash register) and
 // GET /api/bounties/:id/artifact/download (signed URL issuance).
 
+// SPA fallback (platform-independent): browser reloads and direct visits to
+// client routes (/dashboard, /auth) must serve index.html. In-app navigation
+// uses pushState and never hits the server, so only reloads expose this.
+// Unknown /api/* paths keep a JSON 404 instead of leaking HTML.
+app.get("*", async (c) => {
+  const pathname = new URL(c.req.url).pathname;
+  if (pathname.startsWith("/api/")) {
+    return c.json({ error: "Not found" }, 404);
+  }
+  const assets = (c.env as unknown as { ASSETS?: Fetcher }).ASSETS;
+  if (assets) {
+    const res = await assets.fetch(new Request(new URL("/index.html", c.req.url)));
+    if (res.ok) {
+      return new Response(res.body, {
+        status: 200,
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
+    }
+  }
+  return c.text("Not Found", 404);
+});
+
 export default {
   fetch: app.fetch,
 } satisfies ExportedHandler<Env>;
