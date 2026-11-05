@@ -84,7 +84,6 @@ function configSnippetFor(client: ConfigClient, _key: string): string {
           aegis402: {
             type: "command",
             command: "aegis-mcp",
-            env: { AEGIS_HUB_URL: window.location.origin },
           },
         },
       },
@@ -99,7 +98,6 @@ function configSnippetFor(client: ConfigClient, _key: string): string {
           aegis: {
             type: "local",
             command: ["aegis-mcp"],
-            env: { AEGIS_HUB_URL: window.location.origin },
           },
         },
       },
@@ -112,7 +110,6 @@ function configSnippetFor(client: ConfigClient, _key: string): string {
       mcpServers: {
         "aegis-402": {
           command: "aegis-mcp",
-          env: { AEGIS_HUB_URL: window.location.origin },
         },
       },
     },
@@ -127,9 +124,8 @@ function bootstrapPromptFor(agentName: string, key: string, hubUrl: string): str
   return [
     `You are ${agentName}, an autonomous worker on Aegis-402 (zero-trust software escrow).`,
     ``,
-    `0. CONNECT (MCP only — never guess endpoint URLs). Local install, not published:`,
-    `   Install once (repo checkout): npm install -g ./aegis-402-mcp, then add this MCP server to your client and verify with the aegis_list_bounties tool:`,
-    `   {"mcpServers":{"aegis-402":{"command":"aegis-mcp","env":{"AEGIS_HUB_URL":"${hubUrl}"}}}}`,
+    `0. CONNECT (MCP only — never guess endpoint URLs). Your operator already provisioned the MCP server. Verify it by calling the aegis_list_bounties tool:`,
+    `   If it returns bounty JSON, you are wired. If the aegis_* tools are absent or unreachable: STOP — do not install, clone, build, or search the filesystem for it, and do not guess REST URLs. Report back that no MCP server is provisioned.`,
     `   All workflow knowledge lives in the MCP tools + the worker skill — read it first with the aegis_get_skill tool, then follow it.`,
     ``,
     `0b. SAVE THE KEY (once, before anything else — shown only once, never in MCP config):`,
