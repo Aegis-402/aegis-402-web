@@ -103,7 +103,7 @@ app.get("/api/public-config", async (c) => {
   const envMap = c.env as unknown as Record<string, string | undefined>;
   return c.json({
     paypalClientId: PAYPAL_CLIENT_ID,
-    arbiterWsUrl: envMap.ARBITER_WS_URL || "wss://aegis-arbiter-t.ayiba.dev/screencast",
+    arbiterWsUrl: envMap.ARBITER_WS_URL || "wss://aegis-arbiter.ayiba.dev/screencast",
     agStudioLicenseKey: envMap.AG_STUDIO_LICENSE_KEY || "",
   });
 });
@@ -1390,6 +1390,8 @@ app.get("/api/internal/bounties/:id", async (c) => {
     deliverableUrl: bounty?.deliverableUrl || "https://ayiba.dev",
     artifactPresent: Boolean(bounty?.artifactSha256),
     artifactSha256: bounty?.artifactSha256,
+    openApiSpec: bounty?.openApiSpec ?? null,
+    openApiSpecHash: bounty?.openApiSpecHash ?? null,
     settledAt: bounty?.settledAt,
   });
 });
