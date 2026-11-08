@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Bot,
   Plus,
@@ -34,7 +34,6 @@ import { SidebarProvider, SidebarInset } from "./ui/sidebar";
 import { TooltipProvider } from "./ui/tooltip";
 import { AppSidebar } from "./app-sidebar";
 import { SiteHeader } from "./site-header";
-import { ChartAreaInteractive } from "./chart-area-interactive";
 import { MarketplaceView } from "./MarketplaceView";
 import { ReviewQueue } from "./ReviewQueue";
 import { AuditScreen } from "./AuditScreen";
@@ -145,12 +144,13 @@ function workspaceCommandFor(os: KeyOs): string {
   return `mkdir -p aegis-bounties/<BOUNTY_ID> && cd aegis-bounties/<BOUNTY_ID>`;
 }
 
-function bootstrapPromptFor(agentName: string, key: string, hubUrl: string, os: KeyOs): string {
+function bootstrapPromptFor(agentName: string, key: string, os: KeyOs): string {
   return [
     `You are ${agentName}, an autonomous worker on Aegis-402 (zero-trust software escrow).`,
     ``,
-    `0. CONNECT (MCP only — never guess endpoint URLs). Your operator already provisioned the MCP server. Verify it by calling the aegis_list_bounties tool:`,
-    `   If it returns bounty JSON, you are wired. If the aegis_* tools are absent or unreachable: STOP — do not install, clone, build, or search the filesystem for it, and do not guess REST URLs. Report back that no MCP server is provisioned.`,
+    `0. CONNECT (MCP only — never guess endpoint URLs). Check whether the aegis_* tools are available by calling aegis_list_bounties:`,
+    `   If it returns bounty JSON, you are wired — continue to step 0b.`,
+    `   If the aegis_* tools are absent or every call fails as unreachable, the MCP server is NOT installed. STOP — do not proceed with the bounty. Instead, search online (for your own harness: Claude Code / Cursor / Windsurf / OpenCode / Claude Desktop docs) for how to install an MCP server, then report back to your developer BOTH: (a) that the MCP server is not installed, and (b) the install instructions you found — the package is @aegis-402/mcp ('npm install -g @aegis-402/mcp', then add 'aegis-mcp' as the command in the harness MCP config; no env vars, no key in any config — the key file from step 0b below is loaded automatically). The developer will either install it themselves or ask you to install it — wait for them either way. Do not clone, build, or search the filesystem for it, and do not guess endpoint URLs in the meantime. There is no REST path — without the MCP tools you cannot progress, full stop.`,
     `   All workflow knowledge lives in the MCP tools + the worker skill — read it first with the aegis_get_skill tool, then follow it.`,
     ``,
     `0b. SAVE THE KEY (once, before anything else — shown only once, never in MCP config):`,
@@ -161,7 +161,7 @@ function bootstrapPromptFor(agentName: string, key: string, hubUrl: string, os: 
     `   Keep AGENTS.md (bounty, escrow, acceptance criteria, checkpoint log) and MEMORY.md (decisions).`,
     `   .aegis-session.json is MCP-managed — never hand-edit it.`,
     ``,
-    `2. FLOW (MCP tools; REST only if MCP is unreachable — hub ${hubUrl}, header x-agent-key):`,
+    `2. FLOW (MCP tools only — there is no REST path; without the MCP server you stop at step 0):`,
     `   aegis_list_bounties → pick OPEN_FOR_CLAIM → aegis_check_escrow (need verified:true LIVE) →`,
     `   aegis_claim_bounty({bountyId, agentId:"${agentName}"}) → WORK, aegis_push_checkpoint({stage, summary}) every 15-20 min →`,
     `   aegis_validate_artifact({archivePath}) until valid → aegis_upload_artifact({bountyId, archivePath}) → aegis_submit_deliverable().`,
@@ -194,6 +194,12 @@ export function DashboardScreen({
   onOpenPostBounty,
 }: DashboardScreenProps) {
   const isBuyer = user?.role === "BUYER";
+  // Payments is buyer-scoped: only bounties this buyer posted. Developers
+  // never see the tab (sidebar) or the data (deep link).
+  const myBounties = useMemo(
+    () => bounties.filter((b) => b.creatorId === user?.id),
+    [bounties, user?.id]
+  );
   // Default tab based on role (Buyers to Approvals, Developers to Marketplace),
   // unless a ?tab= deep link (e.g. landing "See more") names a valid tab.
   const VALID_TABS = new Set([
@@ -430,7 +436,7 @@ export function DashboardScreen({
 
   const handleCopyCmd = (agentId: string) => {
     // Copy exactly what the bar displays — no injected env vars.
-    navigator.clipboard.writeText("npm install -g ./aegis-402-mcp && aegis-mcp");
+    navigator.clipboard.writeText("npm install -g @aegis-402/mcp");
     setCopiedCmdId(agentId);
     toast.success("Terminal launch command copied to clipboard");
     setTimeout(() => setCopiedCmdId(null), 2000);
@@ -447,7 +453,7 @@ export function DashboardScreen({
   };
 
   const handleCopyBootstrapPrompt = (agentId: string, agentName: string, key: string, os: KeyOs) => {
-    navigator.clipboard.writeText(bootstrapPromptFor(agentName, key, window.location.origin, os));
+    navigator.clipboard.writeText(bootstrapPromptFor(agentName, key, os));
     setCopiedPromptId(agentId);
     toast.success("Worker bootstrap prompt copied — paste it into any model");
     setTimeout(() => setCopiedPromptId(null), 2000);
@@ -1091,7 +1097,7 @@ export function DashboardScreen({
                                 <div className="flex items-center gap-2 overflow-x-auto">
                                   <Terminal className="size-3.5 text-zinc-500 dark:text-zinc-400 shrink-0" />
                                   <code>
-                                    npm install -g ./aegis-402-mcp && aegis-mcp
+                                    npm install -g @aegis-402/mcp
                                   </code>
                                 </div>
                               </div>
@@ -1263,7 +1269,7 @@ export function DashboardScreen({
                           </div>
                         </div>
                         <pre className="p-4 overflow-y-auto font-mono text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed whitespace-pre-wrap">
-                          {bootstrapPromptFor(promptAgent.name, promptKey, window.location.origin, keyOs)}
+                          {bootstrapPromptFor(promptAgent.name, promptKey, keyOs)}
                         </pre>
                       </div>
                     </div>
@@ -1278,16 +1284,55 @@ export function DashboardScreen({
                   <LeaseTimeline
                     bounties={bounties}
                     theme={theme}
-                    onSelectBounty={(b) => {
-                      if (b.status === "READY_FOR_REVIEW") onOpenReviewer(b);
-                    }}
                   />
                 )}
 
-                {/* VIEW: PayPal Authorizations */}
-                {activeTab === "escrow" && (
+                {/* VIEW: PayPal Authorizations (buyer-scoped) */}
+                {activeTab === "escrow" && isBuyer && (
                   <div className="px-4 lg:px-6 space-y-6">
-                    <ChartAreaInteractive />
+                    {myBounties.length === 0 ? (
+                      <div className="p-8 text-center rounded-md border border-dashed border-border bg-muted/20">
+                        <Lock className="size-8 text-foreground/40 mx-auto mb-2" />
+                        <p className="text-sm font-medium text-foreground">No escrow yet</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Post a bounty and its PayPal lock will appear here.
+                        </p>
+                      </div>
+                    ) : null}
+                    {(() => {
+                      const locked = myBounties
+                        .filter((b) => b.status !== "SETTLED" && b.status !== "REFUNDED")
+                        .reduce((t, b) => t + b.escrowAmount, 0);
+                      const captured = myBounties
+                        .filter((b) => b.status === "SETTLED")
+                        .reduce((t, b) => t + b.escrowAmount, 0);
+                      const actionNeeded = myBounties.filter(
+                        (b) =>
+                          b.status === "SETTLED" &&
+                          (!b.payoutBatchId ||
+                            (b.payoutStatus || "").toUpperCase().startsWith("FAILED") ||
+                            (b.payoutStatus || "").toUpperCase().startsWith("SKIPPED"))
+                      ).length;
+                      const kpis = [
+                        { label: "Locked in escrow", value: `$${locked.toFixed(2)}` },
+                        { label: "Captured settlements", value: `$${captured.toFixed(2)}` },
+                        { label: "Payouts needing action", value: `${actionNeeded}` },
+                      ];
+                      return (
+                        <div className="grid grid-cols-3 gap-4">
+                          {kpis.map((k) => (
+                            <Card key={k.label} className="p-4">
+                              <p className="text-sm text-muted-foreground font-mono">
+                                {k.label}
+                              </p>
+                              <p className="text-xl font-medium text-foreground tabular-nums mt-1">
+                                {k.value}
+                              </p>
+                            </Card>
+                          ))}
+                        </div>
+                      );
+                    })()}
                     <Card className="p-5 space-y-4">
                       <div className="pb-3 border-b border-border">
                         <h2 className="text-base font-medium text-foreground font-mono flex items-center gap-2">
@@ -1317,7 +1362,7 @@ export function DashboardScreen({
                             </tr>
                           </thead>
                           <tbody className="divide-y divide-border">
-                            {bounties.map((b) => (
+                            {myBounties.map((b) => (
                               <tr
                                 key={b.id}
                                 className="hover:bg-muted/30 transition-colors"
@@ -1415,10 +1460,28 @@ export function DashboardScreen({
                                 </td>
                               </tr>
                             ))}
+                            {myBounties.length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="py-8 px-4 text-center text-sm text-muted-foreground">
+                                  No payment records yet.
+                                </td>
+                              </tr>
+                            ) : null}
                           </tbody>
                         </table>
                       </div>
                     </Card>
+                  </div>
+                )}
+                {activeTab === "escrow" && !isBuyer && (
+                  <div className="px-4 lg:px-6">
+                    <div className="p-8 text-center rounded-md border border-dashed border-border bg-muted/20">
+                      <Lock className="size-8 text-foreground/40 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-foreground">Buyer-only view</p>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Payments and escrow records live on buyer accounts.
+                      </p>
+                    </div>
                   </div>
                 )}
 

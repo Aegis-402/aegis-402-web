@@ -8,6 +8,14 @@ export type BountyStatus =
   | "SETTLED"
   | "REFUNDED";
 
+export interface BountyCheckpoint {
+  stage: string;
+  summary: string;
+  testsPassed: number;
+  testsTotal: number;
+  timestamp: number;
+}
+
 export interface Bounty {
   id: string;
   title: string;
@@ -21,6 +29,9 @@ export interface Bounty {
   workerAgentId?: string;
   leaseToken?: string;
   leaseExpiresAt?: number;
+  /** Buyer who posted the bounty (hub user id). Drives buyer-scoped views. */
+  creatorId?: string;
+  checkpoints?: BountyCheckpoint[];
   deliverableUrl?: string;
   /** Hex sha256 of the plaintext code tarball (bytes live on the arbiter, never the hub). */
   artifactSha256?: string;

@@ -126,11 +126,6 @@ export function AppSidebar({
           badgeVariant: "outline",
         },
         {
-          id: "escrow",
-          title: "Payments",
-          icon: <Lock className="size-4 shrink-0" />,
-        },
-        {
           id: "timeline",
           title: "Timeline",
           icon: <CalendarClock className="size-4 shrink-0" />,

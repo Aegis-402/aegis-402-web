@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { AgStudio, AgStudioProvider } from "ag-studio-react";
+import { AgStudio, AgStudioProvider, createWidgets } from "ag-studio-react";
 import {
   AgStudioAiModule,
   createAiHarness,
@@ -18,6 +18,14 @@ import {
 } from "ag-studio";
 import type { Bounty } from "../types";
 import { Card } from "./ui/card";
+import { Label } from "./ui/label";
+import { Switch } from "./ui/switch";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "./ui/tooltip";
 
 const LICENSE_KEY = (import.meta as any).env?.VITE_AG_STUDIO_LICENSE_KEY || "";
 
@@ -137,13 +145,83 @@ function buildAegisTheme(): AgStudioTheme {
 const money = (n: number) =>
   `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+/** Humanize enums for camera: IN_PROGRESS -> IN PROGRESS. */
+const humanizeStatus = (s: string) => s.replace(/_/g, " ");
+
+/** Verdict pill — AG Grid cell renderer. One fill per status so the board
+ *  scans at a glance; palette stays inside brand semantics (zinc neutrals,
+ *  PayPal blue for infra, amber family for active, emerald for money out,
+ *  rose for dead). */
+function VerdictPillRenderer(props: any) {
+  const raw = String(props?.value ?? "—");
+  // Humanize enums for camera: IN_PROGRESS -> IN PROGRESS.
+  const value = raw.replace(/_/g, " ");
+  const v = raw.toUpperCase();
+  let bg = "#27272a";
+  let fg = "#fafafa";
+  if (/SETTLED|SENT|PAID|CAPTURED|COMPLETED/.test(v)) {
+    bg = "#10b981";
+    fg = "#09090b";
+  } else if (/READY|REVIEW/.test(v)) {
+    bg = "#fb923c";
+    fg = "#09090b";
+  } else if (/IN.?PROGRESS/.test(v)) {
+    bg = "#f59e0b";
+    fg = "#09090b";
+  } else if (/PROVISIONING/.test(v) || /AUTHORIZE|CAPTURE|PAYPAL/.test(v)) {
+    bg = "#0070ba";
+    fg = "#fafafa";
+  } else if (/PENDING/.test(v)) {
+    bg = "#f59e0b";
+    fg = "#09090b";
+  } else if (/REJECT|FAIL|REFUND|VOID|ERROR/.test(v)) {
+    bg = "#f43f5e";
+    fg = "#fafafa";
+  } else if (/OPEN/.test(v)) {
+    bg = "#27272a";
+    fg = "#fafafa";
+  }
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        padding: "1px 8px",
+        margin: "2px 0",
+        borderRadius: 999,
+        background: bg,
+        color: fg,
+        fontFamily: "monospace",
+        fontSize: 11,
+        textTransform: "uppercase",
+        letterSpacing: "0.04em",
+        lineHeight: 1.5,
+        whiteSpace: "nowrap",
+        verticalAlign: "middle",
+      }}
+    >
+      {value}
+    </span>
+  );
+}
+
 // Module-scope: Studio keys updates by reference identity, so field definitions
 // must be stable for the lifetime of the app (fresh arrays read as "fields
 // changed" and row updates get ignored). Currency pattern per AG docs.
 const ESCROW_FIELDS: AgFieldDefinition[] = [
   { id: "ref", name: "Ref", format: "textFormat" },
   { id: "title", name: "Title", format: "textFormat" },
-  { id: "status", name: "Status", format: "textFormat" },
+  {
+    id: "status",
+    name: "Status (raw)",
+    format: "textFormat",
+    context: { cellRenderer: "verdict" },
+  },
+  {
+    id: "statusLabel",
+    name: "Status",
+    format: "textFormat",
+    context: { cellRenderer: "verdict" },
+  },
   { id: "category", name: "Category", format: "textFormat" },
   {
     id: "escrowAmount",
@@ -163,8 +241,8 @@ const ESCROW_FIELDS: AgFieldDefinition[] = [
     format: "currencyFormat",
     formatOptions: { format: "$#,##0.00" },
   },
-  { id: "payoutStatus", name: "Payout", format: "textFormat" },
-  { id: "invoiceStatus", name: "Invoice", format: "textFormat" },
+  { id: "payoutStatus", name: "Payout", format: "textFormat", context: { cellRenderer: "verdict" } },
+  { id: "invoiceStatus", name: "Invoice", format: "textFormat", context: { cellRenderer: "verdict" } },
   { id: "claimCount", name: "Claims", format: "integerFormat" },
   { id: "rowCount", name: "Rows", format: "integerFormat" },
 ];
@@ -179,7 +257,7 @@ const SETTLEMENT_FIELDS: AgFieldDefinition[] = [
     format: "currencyFormat",
     formatOptions: { format: "$#,##0.00" },
   },
-  { id: "status", name: "Status", format: "textFormat" },
+  { id: "status", name: "Status", format: "textFormat", context: { cellRenderer: "verdict" } },
   { id: "created", name: "Created", format: "dateFormat" },
 ];
 
@@ -346,9 +424,16 @@ const PROMPT_STARTERS: AgAiPromptStarter[] = [
   },
 ];
 
+import { DEMO_BOUNTIES } from "./demoBounties";
+
 export function AuditScreen({ bounties, theme }: AuditScreenProps) {
   const [settlements, setSettlements] = useState<SettlementRow[]>([]);
+  const [showDemo, setShowDemo] = useState(false);
   const aegisTheme = useMemo(() => buildAegisTheme(), []);
+  const effectiveBounties = useMemo(
+    () => (showDemo ? [...bounties, ...DEMO_BOUNTIES] : bounties),
+    [bounties, showDemo]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -370,7 +455,7 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
   // Content signatures: the dashboard polls every 10s with fresh array identities.
   // Rebuilding `data` on reference change resets Studio; rebuild only when rows change.
   const bountySig = JSON.stringify(
-    bounties.map((b) =>
+    effectiveBounties.map((b) =>
       [
         b.id,
         b.title,
@@ -399,14 +484,15 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
   );
 
   const data = useMemo(() => {
-    const open = bounties.filter(
+    const open = effectiveBounties.filter(
       (b) => b.status !== "SETTLED" && b.status !== "REFUNDED"
     );
-    const closed = bounties.filter((b) => b.status === "SETTLED");
+    const closed = effectiveBounties.filter((b) => b.status === "SETTLED");
     const row = (b: Bounty) => ({
       ref: b.id.length > 8 ? `${b.id.slice(0, 8)}…` : b.id,
       title: b.title,
       status: b.status,
+      statusLabel: humanizeStatus(b.status),
       category: b.category,
       escrowAmount: b.escrowAmount,
       platformFee:
@@ -451,10 +537,10 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
 
   // Finding line: computed from the same rows the canvas shows, so copies agree.
   const finding = useMemo(() => {
-    const open = bounties.filter(
+    const open = effectiveBounties.filter(
       (b) => b.status !== "SETTLED" && b.status !== "REFUNDED"
     );
-    const closed = bounties.filter((b) => b.status === "SETTLED");
+    const closed = effectiveBounties.filter((b) => b.status === "SETTLED");
     const locked = open.reduce((t, b) => t + b.escrowAmount, 0);
     const paid = closed.reduce(
       (t, b) =>
@@ -462,17 +548,17 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
         (b.developerPayout ?? Math.round(b.escrowAmount * 0.95 * 100) / 100),
       0
     );
-    const attention = bounties.filter((b) => {
+    const attention = effectiveBounties.filter((b) => {
       if (b.status !== "SETTLED") return (b.claimCount ?? 0) > 0;
       const ps = (b.payoutStatus || "").toUpperCase();
       return !ps || ps === "—" || /FAIL|SKIP|PEND/.test(ps);
     }).length;
-    if (bounties.length === 0)
+    if (effectiveBounties.length === 0)
       return "No escrow activity yet — post a bounty to open the ledger.";
     const bits = [`${money(locked)} locked`, `${money(paid)} paid out`];
     if (attention > 0) bits.push(`${attention} needing attention`);
     return bits.join(" · ");
-  }, [bounties]);
+  }, [effectiveBounties]);
 
   const initialState = useMemo<AgReportState>(
     () => ({
@@ -496,23 +582,36 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
               },
               format: { caption: { enabled: true, text: "Developer payouts" } },
             },
+            "status-filter": {
+              type: "button-filter",
+              dataMapping: {
+                value: [{ id: "escrow-open.statusLabel" }],
+              },
+              format: { title: { enabled: true, text: "Filter by status" } },
+            },
             grid: {
               type: "grid",
               dataMapping: {
                 cols: [
                   { id: "escrow-open.ref" },
                   { id: "escrow-open.title" },
-                  { id: "escrow-open.status" },
+                  { id: "escrow-open.statusLabel" },
                   { id: "escrow-open.escrowAmount" },
                   { id: "escrow-open.payoutStatus" },
                 ],
               },
-              format: { title: { enabled: true, text: "Open escrow" } },
+              sort: [
+                { field: { id: "escrow-open.escrowAmount" }, direction: "desc" },
+              ],
+              format: {
+                title: { enabled: true, text: "Open escrow" },
+                style: { theme: { rowHeight: 36 } },
+              },
             },
             chart: {
               type: "column-chart-grouped",
               dataMapping: {
-                categoryKey: [{ id: "escrow-open.status" }],
+                categoryKey: [{ id: "escrow-open.statusLabel" }],
                 valueKey: [
                   { id: "escrow-open.escrowAmount", aggregation: "sum" },
                 ],
@@ -521,12 +620,29 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
                 title: { enabled: true, text: "Open escrow by status" },
               },
             },
+            pivot: {
+              type: "pivot-grid",
+              dataMapping: {
+                rows: [{ id: "escrow-open.statusLabel" }],
+                columns: [],
+                values: [
+                  { id: "escrow-open.escrowAmount", aggregation: "sum" },
+                  { id: "escrow-open.developerPayout", aggregation: "sum" },
+                ],
+              },
+              format: {
+                title: { enabled: true, text: "Escrow sums by status" },
+                style: { theme: { rowHeight: 36 } },
+              },
+            },
           },
           widgetLayout: {
             "kpi-locked": { xTrack: 0, yTrack: 0, xSpan: 12, ySpan: 8 },
             "kpi-paid": { xTrack: 12, yTrack: 0, xSpan: 12, ySpan: 8 },
-            chart: { xTrack: 0, yTrack: 8, xSpan: 24, ySpan: 14 },
-            grid: { xTrack: 0, yTrack: 22, xSpan: 24, ySpan: 20 },
+            "status-filter": { xTrack: 0, yTrack: 8, xSpan: 24, ySpan: 10 },
+            chart: { xTrack: 0, yTrack: 18, xSpan: 24, ySpan: 16 },
+            grid: { xTrack: 0, yTrack: 34, xSpan: 24, ySpan: 26 },
+            pivot: { xTrack: 0, yTrack: 60, xSpan: 24, ySpan: 24 },
           },
           selection: { type: "widget", id: "grid" },
         },
@@ -567,15 +683,75 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
     [adapter]
   );
 
+  const widgets = useMemo(
+    () =>
+      createWidgets({
+        overrides: [
+          {
+            id: "grid",
+            options: {
+              createCellRenderer: (field: any) =>
+                field?.context?.cellRenderer === "verdict"
+                  ? VerdictPillRenderer
+                  : undefined,
+            },
+          },
+          {
+            id: "pivot-grid",
+            options: {
+              createCellRenderer: (field: any) =>
+                field?.context?.cellRenderer === "verdict"
+                  ? VerdictPillRenderer
+                  : undefined,
+            },
+          },
+        ],
+      }),
+    []
+  );
+
   return (
     <div className="px-4 lg:px-6 space-y-4">
-      <div className="pb-3 border-b border-border">
-        <h1 className="text-xl font-medium text-foreground tracking-tight">
-          Escrow audit
-        </h1>
-        <p className="text-sm text-muted-foreground mt-0.5 tabular-nums">
-          {finding}
-        </p>
+      <div className="pb-3 border-b border-border flex items-end justify-between gap-4">
+        <div>
+          <h1 className="text-xl font-medium text-foreground tracking-tight">
+            Escrow audit
+          </h1>
+          <p className="text-sm text-muted-foreground mt-0.5 tabular-nums">
+            {finding}
+            {showDemo ? " · incl. demo" : ""}
+          </p>
+        </div>
+        <div className="flex items-center gap-3">
+          <img
+            src="/ag-grid-logo.png"
+            alt="Powered by AG Grid"
+            className="h-5 w-auto rounded bg-white px-1.5 py-0.5"
+            loading="lazy"
+          />
+          <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <div className="flex items-center gap-2">
+                  <Switch
+                    checked={showDemo}
+                    onCheckedChange={setShowDemo}
+                    aria-label="Toggle demo data"
+                  />
+                  <Label className="text-sm text-muted-foreground font-mono">
+                    Demo data
+                  </Label>
+                </div>
+              }
+            />
+            <TooltipContent side="left">
+              Loads 100 demo bounties (demo-*) alongside real data so
+              filters, pills, and sums have something to chew on.
+            </TooltipContent>
+          </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
       <Card className="overflow-hidden p-0">
         <div
@@ -588,6 +764,7 @@ export function AuditScreen({ bounties, theme }: AuditScreenProps) {
               data={data}
               theme={aegisTheme}
               initialState={initialState}
+              widgets={widgets}
               mode="view"
               ai={ai}
             />
