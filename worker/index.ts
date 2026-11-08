@@ -427,7 +427,7 @@ app.post("/api/bounties/:id/artifact", requireDeveloperOrAgent, async (c) => {
   bounty.leaseExpiresAt = Date.now() + 30 * 60 * 1000; // registering is progress
   await putBountyRecord(db, bounty);
 
-  const arbiterUrl = (envMap.ARBITER_PUBLIC_URL || "http://localhost:7144").replace(/\/$/, "");
+  const arbiterUrl = (envMap.ARBITER_PUBLIC_URL || "https://aegis-arbiter.ayiba.dev").replace(/\/$/, "");
   const { token, expiresAt } = await issueToken(envMap.REFEREE_SECRET, "upload", id, bounty.workerUserId || "agent", 1800);
   return c.json({
     status: "REGISTERED",
@@ -467,7 +467,7 @@ app.get("/api/bounties/:id/artifact/download", requireAuth, requireRole("BUYER")
   if (!envMap.REFEREE_SECRET) {
     return c.json({ error: "Arbiter handoff not configured (REFEREE_SECRET)" }, 503);
   }
-  const arbiterUrl = (envMap.ARBITER_PUBLIC_URL || "http://localhost:7144").replace(/\/$/, "");
+  const arbiterUrl = (envMap.ARBITER_PUBLIC_URL || "https://aegis-arbiter.ayiba.dev").replace(/\/$/, "");
   const { token, expiresAt } = await issueToken(envMap.REFEREE_SECRET, "download", id, c.get("user").id, 900);
   return c.json({
     bountyId: id,
