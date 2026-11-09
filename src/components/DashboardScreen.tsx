@@ -23,12 +23,6 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Badge } from "./ui/badge";
 import { Card } from "./ui/card";
-import { Switch } from "./ui/switch";
-import {
-  useLocalArbiter,
-  setUseLocalArbiter,
-  rewriteArbiterUrl,
-} from "../lib/arbiter";
 import {
   Select,
   SelectContent,
@@ -335,9 +329,6 @@ export function DashboardScreen({
   }, [promptAgentId]);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
-  // Test toggle: route browser arbiter traffic (canvas stream + downloads)
-  // to a local arbiter instead of the VM. Persists to localStorage.
-  const [localArbiter, setLocalArbiter] = useState<boolean>(() => useLocalArbiter());
 
   const handleRetryPayout = async (bountyId: string) => {
     setRetryingId(bountyId);
@@ -361,7 +352,7 @@ export function DashboardScreen({
       const res = await fetch(`/api/bounties/${bountyId}/artifact/download`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = (await res.json()) as { url: string };
-      window.location.href = rewriteArbiterUrl(data.url);
+      window.location.href = data.url;
       toast.success("Download started — verify sha256 after extracting.");
     } catch {
       toast.error("Artifact download failed.");
@@ -1582,33 +1573,6 @@ export function DashboardScreen({
                             Direct disbursements for completed and verified
                             bounties. Locked to the address set at signup.
                           </div>
-                        </div>
-
-                        <div className="flex items-center justify-between p-3 rounded-md border border-border bg-muted/20">
-                          <div>
-                            <div className="font-medium text-foreground text-sm">
-                              Use local arbiter
-                            </div>
-                            <div className="text-[11px] text-zinc-600 dark:text-zinc-400">
-                              Route the canvas stream + downloads to
-                              localhost:7144 instead of the VM. For
-                              smooth local recording. Agent uploads
-                              are unaffected.
-                            </div>
-                            <div className="text-[11px] text-zinc-500 dark:text-zinc-500 mt-1 font-mono">
-                              {localArbiter
-                                ? "ws://localhost:7144/screencast"
-                                : "wss://aegis-arbiter.ayiba.dev/screencast"}
-                            </div>
-                          </div>
-                          <Switch
-                            checked={localArbiter}
-                            onCheckedChange={(v) => {
-                              setLocalArbiter(v);
-                              setUseLocalArbiter(v);
-                            }}
-                            aria-label="Use local arbiter"
-                          />
                         </div>
 
                         <div className="pt-2">

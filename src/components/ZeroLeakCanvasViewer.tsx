@@ -11,9 +11,10 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Bounty } from "../types";
-import { getArbiterWsUrl, ARBITER_CHANGED_EVENT } from "../lib/arbiter";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
+
+const ARBITER_WS_URL = "wss://aegis-arbiter.ayiba.dev/screencast";
 
 interface ZeroLeakCanvasViewerProps {
   bounty: Bounty;
@@ -49,6 +50,26 @@ export function ZeroLeakCanvasViewer({
   const [errorMsg, setErrorMsg] = useState("");
   const [frameSize, setFrameSize] = useState<{ w: number; h: number } | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Arbiter WS endpoint: served by /api/public-config (wrangler ARBITER_WS_URL),
+  // with the VM default until config loads or if the fetch fails.
+  const [wsUrl, setWsUrl] = useState<string>(ARBITER_WS_URL);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/public-config")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!cancelled && d && typeof d.arbiterWsUrl === "string" && d.arbiterWsUrl) {
+          setWsUrl(d.arbiterWsUrl);
+        }
+      })
+      .catch(() => {
+        // offline preview etc. — stay on the default
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [busy, setBusy] = useState<"capture" | "void" | null>(null);
   const [receipt, setReceipt] = useState<{ captureId: string; key: string } | null>(null);
@@ -62,13 +83,6 @@ export function ZeroLeakCanvasViewer({
   }, []);
 
   // Connection lifecycle: opens when mounted, closes when unmounted.
-  // Reconnects when the Profile arbiter toggle flips (local <-> VM).
-  useEffect(() => {
-    const onArbiterChanged = () => setAttempt((a) => a + 1);
-    window.addEventListener(ARBITER_CHANGED_EVENT, onArbiterChanged);
-    return () => window.removeEventListener(ARBITER_CHANGED_EVENT, onArbiterChanged);
-  }, []);
-
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -78,7 +92,6 @@ export function ZeroLeakCanvasViewer({
     setFrameSize(null);
 
     const rect = stage.getBoundingClientRect();
-    const wsUrl = getArbiterWsUrl();
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     let disposed = false;
@@ -139,7 +152,7 @@ export function ZeroLeakCanvasViewer({
     ws.onerror = () => {
       if (disposed) return;
       setStatus("error");
-      setErrorMsg(`Cannot reach the arbiter at ${getArbiterWsUrl()}. Is it running?`);
+      setErrorMsg(`Cannot reach the arbiter at ${wsUrl}. Is it running?`);
     };
     ws.onclose = () => {
       if (disposed) return;
@@ -151,7 +164,7 @@ export function ZeroLeakCanvasViewer({
       ws.close();
       wsRef.current = null;
     };
-  }, [bounty.id, bounty.deliverableUrl, attempt]);
+  }, [bounty.id, bounty.deliverableUrl, attempt, wsUrl]);
 
   // Keep the remote viewport matched to the on-screen stage.
   useEffect(() => {

@@ -26,7 +26,8 @@
     },
   ],
   "vars": {
-    "ARBITER_WS_URL": "wss://aegis-arbiter.ayiba.dev/screencast",
+    "ARBITER_PUBLIC_URL": "https://aegis-arbiter-t.ayiba.dev",
+    "ARBITER_WS_URL": "wss://aegis-arbiter-t.ayiba.dev/screencast",
     "PAYPAL_API_BASE": "https://api-m.sandbox.paypal.com",
   },
   /**
