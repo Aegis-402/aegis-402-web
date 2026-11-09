@@ -11,10 +11,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Bounty } from "../types";
+import { getArbiterWsUrl, ARBITER_CHANGED_EVENT } from "../lib/arbiter";
 import { Button } from "./ui/button";
 import { Badge } from "./ui/badge";
-
-const ARBITER_WS_URL = "wss://aegis-arbiter.ayiba.dev/screencast";
 
 interface ZeroLeakCanvasViewerProps {
   bounty: Bounty;
@@ -63,6 +62,13 @@ export function ZeroLeakCanvasViewer({
   }, []);
 
   // Connection lifecycle: opens when mounted, closes when unmounted.
+  // Reconnects when the Profile arbiter toggle flips (local <-> VM).
+  useEffect(() => {
+    const onArbiterChanged = () => setAttempt((a) => a + 1);
+    window.addEventListener(ARBITER_CHANGED_EVENT, onArbiterChanged);
+    return () => window.removeEventListener(ARBITER_CHANGED_EVENT, onArbiterChanged);
+  }, []);
+
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
@@ -72,7 +78,8 @@ export function ZeroLeakCanvasViewer({
     setFrameSize(null);
 
     const rect = stage.getBoundingClientRect();
-    const ws = new WebSocket(ARBITER_WS_URL);
+    const wsUrl = getArbiterWsUrl();
+    const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
     let disposed = false;
 
@@ -132,7 +139,7 @@ export function ZeroLeakCanvasViewer({
     ws.onerror = () => {
       if (disposed) return;
       setStatus("error");
-      setErrorMsg("Cannot reach the arbiter at localhost:7144. Is it running?");
+      setErrorMsg(`Cannot reach the arbiter at ${getArbiterWsUrl()}. Is it running?`);
     };
     ws.onclose = () => {
       if (disposed) return;
